@@ -9,7 +9,6 @@
 #include <RobotDrive.h>
 #include <Timer.h>
 #include <Spark.h>
-#include <Talon.h>
 
 /**
  * This is a demo program showing the use of the RobotDrive class.
@@ -82,10 +81,9 @@ public:
 	void OperatorControl() override {
 		myRobot.SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
-			// drive with tank style (joystick, leftYAxis, joystick, rightYAxis) <- Xbox 360
+			// drive with arcade style (use right stick)
 			myRobot.TankDrive(stick, 1, stick, 5);
-
-			myMotor.Set(1); //Set myMotor to full power
+			myMotor.Set(1);
 
 			// wait for a motor update time
 			frc::Wait(0.005);
