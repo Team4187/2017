@@ -9,6 +9,7 @@
 #include <RobotDrive.h>
 #include <Timer.h>
 #include <Spark.h>
+#include <Encoder.h>
 
 /**
  * This is a demo program showing the use of the RobotDrive class.
@@ -29,6 +30,7 @@ class Robot: public frc::SampleRobot {
 	const std::string autoNameDefault = "Default";
 	const std::string autoNameCustom = "My Auto";
 	frc::Spark myMotor {2};
+	frc::Encoder myEncoder {1,2};
 
 public:
 	Robot() {
@@ -84,7 +86,7 @@ public:
 			// drive with arcade style (use right stick)
 			myRobot.TankDrive(stick, 1, stick, 5);
 			myMotor.Set(1);
-
+			frc::SmartDashboard::PutNumber("Encoder Value", myEncoder.Get());
 			// wait for a motor update time
 			frc::Wait(0.005);
 		}
