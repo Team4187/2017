@@ -10,6 +10,7 @@
 #include <Timer.h>
 #include <Spark.h>
 #include <Encoder.h>
+#include <PIDController.h>
 
 /**
  * This is a demo program showing the use of the RobotDrive class.
@@ -30,7 +31,12 @@ class Robot: public frc::SampleRobot {
 	const std::string autoNameDefault = "Default";
 	const std::string autoNameCustom = "My Auto";
 	frc::Spark myMotor {2};
-	frc::Encoder myEncoder {1,2};
+	//encoder name {port A, port B, reversed?, Accuracy/Precision}
+	frc::Encoder myEncoder {1,2, false, Encoder::EncodingType::k1X};
+	//frc::Spark *motorPtr = &myMotor;
+	//frc::Encoder *encoderPtr = &myEncoder;
+	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
+	frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
 
 public:
 	Robot() {
@@ -85,7 +91,8 @@ public:
 		while (IsOperatorControl() && IsEnabled()) {
 			// drive with arcade style (use right stick)
 			myRobot.TankDrive(stick, 1, stick, 5);
-			myMotor.Set(1);
+			//myMotor.Set(1);
+			myPID.SetSetpoint(stick.GetRawAxis(2));
 			frc::SmartDashboard::PutNumber("Encoder Value", myEncoder.Get());
 			// wait for a motor update time
 			frc::Wait(0.005);
