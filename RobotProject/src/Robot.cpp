@@ -27,9 +27,11 @@
 class Robot: public frc::SampleRobot {
 	frc::RobotDrive myRobot { 0, 1 }; // robot drive system
 	frc::Joystick stick { 0 }; // only joystick
+
 	frc::SendableChooser<std::string> chooser;
 	const std::string autoNameDefault = "Default";
 	const std::string autoNameCustom = "My Auto";
+
 	frc::Spark myMotor {2};
 	//encoder name {port A, port B, reversed?, Accuracy/Precision}
 	frc::Encoder myEncoder {1,2, false, Encoder::EncodingType::k1X};
@@ -37,6 +39,11 @@ class Robot: public frc::SampleRobot {
 	//frc::Encoder *encoderPtr = &myEncoder;
 	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
 	frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
+
+	frc::Compressor myCompressor {0};
+	//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
+	frc::DoubleSolenoid myDoubleSolenoid { 1,2 };
+	//frc::Solenoid mySingleSolenoid { 1 };
 
 public:
 	Robot() {
@@ -89,14 +96,22 @@ public:
 	void OperatorControl() override {
 		myRobot.SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
+			if(stick.GetPOV() == 0){
+				myDoubleSolenoid.set(frc::DoubleSolenoid::Value::kFoward);
+			}
+			if(stick.GetPOV() == 180){
+				myDoubleSolenoid.set(frc::DoubleSolenoid::Value::kReverse);
+			}
 			// drive with arcade style (use right stick)
 			myRobot.TankDrive(stick, 1, stick, 5);
 			//myMotor.Set(1);
 			myPID.SetSetpoint(stick.GetRawAxis(2));
 			frc::SmartDashboard::PutNumber("Encoder Value", myEncoder.Get());
+
 			// wait for a motor update time
 			frc::Wait(0.005);
-		}
+			//possible to prevent waiting too long?
+			//if((.005-(curTime-initTime))>0){frc::Wait(0.005 - (curTime-initTime));}
 	}
 
 	/*
