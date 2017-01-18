@@ -39,6 +39,7 @@ class Robot: public frc::SampleRobot {
 	//frc::Encoder *encoderPtr = &myEncoder;
 	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
 	frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
+	int maxSpeed = 16;
 
 	frc::Compressor myCompressor {0};
 	//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
@@ -95,22 +96,40 @@ public:
 	 */
 	void OperatorControl() override {
 		myRobot.SetSafetyEnabled(true);
+		int speedLimit = 1;
 		while (IsOperatorControl() && IsEnabled()) {
+			//low gear
 			if(stick.GetPOV() == 0){
 				myDoubleSolenoid.set(frc::DoubleSolenoid::Value::kFoward);
+				speedLimit = 1;
+				maxSpeed = 9;
 			}
+			//high gear
 			if(stick.GetPOV() == 180){
 				myDoubleSolenoid.set(frc::DoubleSolenoid::Value::kReverse);
+				speedLimit = .9;
+				maxSpeed = 16;
 			}
-			// drive with arcade style (use right stick)
+
+			// drive with tank style (use both sticks)
 			myRobot.TankDrive(stick, 1, stick, 5);
 			//myMotor.Set(1);
-			myPID.SetSetpoint(stick.GetRawAxis(2));
+
+			//use PID controller to smoothly change distance
+			if(abs(stick.GetRawAxis(2))>speedLimit){
+				myPID.SetSetpoint( maxSpeed*(stick.GetRawAxis(2)/abs(stick.GetRawAxis(2)))*speedLimit);
+			}
+			else{
+				myPID.SetSetpoint(stick.GetRawAxis(2));
+			}
+			
+			frc::SmartDashboard::PutData("Compressor Running", Compressor.Enabled());
+			frc::SmartDashboard::PutNumber("Current Pressure psi", Compressor.GetCompressorCurrent() )
 			frc::SmartDashboard::PutNumber("Encoder Value", myEncoder.Get());
 
 			// wait for a motor update time
 			frc::Wait(0.005);
-			//possible to prevent waiting too long?
+			//possibility to prevent waiting too long?
 			//if((.005-(curTime-initTime))>0){frc::Wait(0.005 - (curTime-initTime));}
 	}
 
