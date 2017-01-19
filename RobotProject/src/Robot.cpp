@@ -11,6 +11,9 @@
 #include <Spark.h>
 #include <Encoder.h>
 #include <PIDController.h>
+#include <Compressor.h>
+#include <Solenoid.h>
+#include <DoubleSolenoid.h>
 
 /**
  * This is a demo program showing the use of the RobotDrive class.
@@ -34,16 +37,19 @@ class Robot: public frc::SampleRobot {
 
 	frc::Spark myMotor {2};
 	//encoder name {port A, port B, reversed?, Accuracy/Precision}
-	frc::Encoder myEncoder {1,2, false, Encoder::EncodingType::k1X};
+	frc::Encoder leftDriveEncoder {1,2, false, Encoder::EncodingType::k1X};
+	frc::Encoder rightDriveEncoder {3,4, false, Encoder::EncodingType::k1X};
 	//frc::Spark *motorPtr = &myMotor;
 	//frc::Encoder *encoderPtr = &myEncoder;
 	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
-	frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
-	int maxSpeed = 16;
+	//frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
+	double highMaxSpeed = 16.00;
+	double lowMaxSpeed = 9.00;
+	double curMaxSpeed = lowMaxSpeed;
 
 	frc::Compressor myCompressor {0};
 	//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
-	frc::DoubleSolenoid myDoubleSolenoid { 1,2 };
+	frc::DoubleSolenoid gearShifter { 1,2 };
 	//frc::Solenoid mySingleSolenoid { 1 };
 
 public:
@@ -96,41 +102,57 @@ public:
 	 */
 	void OperatorControl() override {
 		myRobot.SetSafetyEnabled(true);
-		int speedLimit = 1;
 		while (IsOperatorControl() && IsEnabled()) {
-			//low gear
+
+			/**
+			 This is for manual Shifting, we want Automatic to prevent driver from taking off in high gear
+			 //low gear
 			if(stick.GetPOV() == 0){
-				myDoubleSolenoid.set(frc::DoubleSolenoid::Value::kFoward);
+				myDoubleSolenoid.Set(frc::DoubleSolenoid::Value::kForward);
 				speedLimit = 1;
-				maxSpeed = 9;
+				curMaxSpeed = lowMaxSpeed;
 			}
 			//high gear
 			if(stick.GetPOV() == 180){
-				myDoubleSolenoid.set(frc::DoubleSolenoid::Value::kReverse);
+				myDoubleSolenoid.Set(frc::DoubleSolenoid::Value::kReverse);
 				speedLimit = .9;
-				maxSpeed = 16;
+				curMaxSpeed = highMaxSpeed;
+			}
+			**/
+			if(leftDriveEncoder.GetRate() >= lowMaxSpeed && rightDriveEncoder.GetRate() >= lowMaxSpeed){
+				//if both sides are moving at low max speed or higher then shift to high gear
+				gearShifter.Set(frc::DoubleSolenoid::Value::kReverse);
+			}
+			if(leftDriveEncoder.GetRate() <= lowMaxSpeed && rightDriveEncoder.GetRate() <= lowMaxSpeed){
+				//if both sides are moving slower than max speed then shift to low gear
+				gearShifter.Set(frc::DoubleSolenoid::Value::kForward);
 			}
 
 			// drive with tank style (use both sticks)
 			myRobot.TankDrive(stick, 1, stick, 5);
 			//myMotor.Set(1);
 
-			//use PID controller to smoothly change distance
+			/**
+			  int speedLimit = 1;
+			  //use PID controller to smoothly change distance (convert to speed)
 			if(abs(stick.GetRawAxis(2))>speedLimit){
-				myPID.SetSetpoint( maxSpeed*(stick.GetRawAxis(2)/abs(stick.GetRawAxis(2)))*speedLimit);
+				myPID.SetSetpoint( curMaxSpeed*(stick.GetRawAxis(2)/abs(stick.GetRawAxis(2)))*speedLimit);
 			}
 			else{
 				myPID.SetSetpoint(stick.GetRawAxis(2));
 			}
+			**/
 			
-			frc::SmartDashboard::PutData("Compressor Running", Compressor.Enabled());
-			frc::SmartDashboard::PutNumber("Current Pressure psi", Compressor.GetCompressorCurrent() )
-			frc::SmartDashboard::PutNumber("Encoder Value", myEncoder.Get());
+			frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
+			frc::SmartDashboard::PutNumber("Current Pressure psi", myCompressor.GetCompressorCurrent());
+			frc::SmartDashboard::PutNumber("Left Encoder Value", leftDriveEncoder.GetRaw());
+			frc::SmartDashboard::PutNumber("Right Encoder Value", rightDriveEncoder.GetRaw());
 
 			// wait for a motor update time
 			frc::Wait(0.005);
 			//possibility to prevent waiting too long?
 			//if((.005-(curTime-initTime))>0){frc::Wait(0.005 - (curTime-initTime));}
+		}
 	}
 
 	/*
