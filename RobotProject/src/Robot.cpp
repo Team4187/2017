@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <math.h>
 
 #include <Joystick.h>
 #include <SampleRobot.h>
@@ -15,6 +16,137 @@
 #include <Solenoid.h>
 #include <DoubleSolenoid.h>
 
+
+class VPBSDrive {
+	public:
+		//class scope variables
+		double highMaxSpeed = 16.00; //guess
+		double lowMaxSpeed = 9.00; //guess
+		double curMaxSpeed = lowMaxSpeed; //a good default
+		double dPerPulse = 2.0; //no clue on
+		double minRate = 2.0; //no clue on
+		double sensitivity = 0.5; //default
+		frc::Spark* rSide [3];
+		frc::Spark* lSide [3];
+		frc::Encoder* rightDriveEncoder;
+		frc::Encoder* leftDriveEncoder;
+		frc::DoubleSolenoid* gearShifter;
+
+		//init function
+		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
+
+			rSide[0] = new frc::Spark(frm);
+			rSide[1] = new frc::Spark(crm);
+			rSide[2] = new frc::Spark(brm);
+
+			lSide[0] = new frc::Spark(flm);
+			lSide[1] = new frc::Spark(clm);
+			lSide[2] = new frc::Spark(blm);
+
+			//encoder name {port A, port B, reversed?, Accuracy/Precision}
+			rightDriveEncoder = new frc::Encoder(reA, reB, false, Encoder::EncodingType::k1X);
+			leftDriveEncoder = new frc::Encoder(leA, leB, false, Encoder::EncodingType::k1X);
+			rightDriveEncoder->SetDistancePerPulse(dPerPulse);
+			leftDriveEncoder->SetDistancePerPulse(dPerPulse);
+			rightDriveEncoder->SetMinRate(minRate);
+			leftDriveEncoder->SetMinRate(minRate);
+			//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
+			gearShifter = new frc::DoubleSolenoid(solA, solB );
+			//frc::Solenoid mySingleSolenoid { 1 };
+		}
+		virtual ~VPBSDrive() = default;
+		//mimics normal tank drive but adds automatic shifting
+		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
+			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
+				//if both sides are moving at low max speed or higher then shift to high gear
+				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
+				this->curMaxSpeed = this->highMaxSpeed;
+			}
+			if(this->leftDriveEncoder->GetRate() <= lowMaxSpeed && this->rightDriveEncoder->GetRate() <= lowMaxSpeed){
+				//if both sides are moving slower than max speed then shift to low gear
+				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
+				this->curMaxSpeed = this->lowMaxSpeed;
+			}
+
+			for(int i = 0; i < 3; i++){
+				this->rSide[i]->Set(stick->GetRawAxis(rAxis));
+			}
+			for(int i = 0; i < 3; i++){
+				this->lSide[i]->Set(stick->GetRawAxis(lAxis));
+			}
+		}
+		void Drive (double mag, double curve){
+			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
+				//if both sides are moving at low max speed or higher then shift to high gear
+				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
+				this->curMaxSpeed = this->highMaxSpeed;
+			}
+			if(this->leftDriveEncoder->GetRate() <= lowMaxSpeed && this->rightDriveEncoder->GetRate() <= lowMaxSpeed){
+				//if both sides are moving slower than max speed then shift to low gear
+				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
+				this->curMaxSpeed = this->lowMaxSpeed;
+			}
+			double ratio;
+			if(curve<0){
+				ratio = (std::log10(-curve) - this->sensitivity)/(std::log10(-curve) + this->sensitivity);
+				for(int i = 0; i < 3; i++){
+					this->rSide[i]->Set(mag);
+				}
+				for(int i = 0; i < 3; i++){
+					this->lSide[i]->Set(mag/ratio);
+				}
+			}
+			else if(curve>0){
+				ratio = (std::log10(curve) - this->sensitivity)/(std::log10(curve) + this->sensitivity);
+				for(int i = 0; i < 3; i++){
+					this->rSide[i]->Set(mag/ratio);
+				}
+				for(int i = 0; i < 3; i++){
+					this->lSide[i]->Set(mag);
+				}
+			}
+			else {
+				for(int i = 0; i < 3; i++){
+					this->rSide[i]->Set(mag);
+				}
+				for(int i = 0; i < 3; i++){
+					this->lSide[i]->Set(mag);
+				}
+			}
+
+		}
+		void SetExpiration(double timeout){
+			for(int i = 0; i < 3; i++){
+				this->rSide[i]->SetExpiration(timeout);
+			}
+			for(int i = 0; i < 3; i++){
+				this->lSide[i]->SetExpiration(timeout);
+			}
+		}
+		double GetExpiration(){
+			return this->rSide[0]->GetExpiration();
+		}
+		bool IsSafetyEnabled(){
+			return this->rSide[0]->IsSafetyEnabled();
+		}
+		void SetSafetyEnabled(bool enabled){
+			for(int i = 0; i < 3; i++){
+				this->rSide[i]->SetSafetyEnabled(enabled);
+			}
+			for(int i = 0; i < 3; i++){
+				this->lSide[i]->SetSafetyEnabled(enabled);
+			}
+		}
+		void StopMotor(){
+			for(int i = 0; i < 3; i++){
+				this->rSide[i]->StopMotor();
+			}
+			for(int i = 0; i < 3; i++){
+				this->lSide[i]->StopMotor();
+			}
+		}
+
+};
 /**
  * This is a demo program showing the use of the RobotDrive class.
  * The SampleRobot class is the base of a robot application that will
@@ -28,29 +160,20 @@
  * instead if you're new.
  */
 class Robot: public frc::SampleRobot {
-	frc::RobotDrive myRobot { 0, 1 }; // robot drive system
-	frc::Joystick stick { 0 }; // only joystick
+	VPBSDrive myRobot = VPBSDrive(1,3,5,0,1,2,0,1,2,3,1,2); // robot drive system,
+	frc::Joystick* stick = new frc::Joystick(0); // only joystick
 
 	frc::SendableChooser<std::string> chooser;
 	const std::string autoNameDefault = "Default";
 	const std::string autoNameCustom = "My Auto";
 
-	frc::Spark myMotor {2};
-	//encoder name {port A, port B, reversed?, Accuracy/Precision}
-	frc::Encoder leftDriveEncoder {1,2, false, Encoder::EncodingType::k1X};
-	frc::Encoder rightDriveEncoder {3,4, false, Encoder::EncodingType::k1X};
+	frc::Spark myMotor {6};
 	//frc::Spark *motorPtr = &myMotor;
 	//frc::Encoder *encoderPtr = &myEncoder;
 	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
 	//frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
-	double highMaxSpeed = 16.00;
-	double lowMaxSpeed = 9.00;
-	double curMaxSpeed = lowMaxSpeed;
 
 	frc::Compressor myCompressor {0};
-	//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
-	frc::DoubleSolenoid gearShifter { 1,2 };
-	//frc::Solenoid mySingleSolenoid { 1 };
 
 public:
 	Robot() {
@@ -104,54 +227,23 @@ public:
 		myRobot.SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
 
-			/**
-			 This is for manual Shifting, we want Automatic to prevent driver from taking off in high gear
-			 //low gear
-			if(stick.GetPOV() == 0){
-				myDoubleSolenoid.Set(frc::DoubleSolenoid::Value::kForward);
-				speedLimit = 1;
-				curMaxSpeed = lowMaxSpeed;
-			}
-			//high gear
-			if(stick.GetPOV() == 180){
-				myDoubleSolenoid.Set(frc::DoubleSolenoid::Value::kReverse);
-				speedLimit = .9;
-				curMaxSpeed = highMaxSpeed;
-			}
-			**/
-			if(leftDriveEncoder.GetRate() >= lowMaxSpeed && rightDriveEncoder.GetRate() >= lowMaxSpeed){
-				//if both sides are moving at low max speed or higher then shift to high gear
-				gearShifter.Set(frc::DoubleSolenoid::Value::kReverse);
-			}
-			if(leftDriveEncoder.GetRate() <= lowMaxSpeed && rightDriveEncoder.GetRate() <= lowMaxSpeed){
-				//if both sides are moving slower than max speed then shift to low gear
-				gearShifter.Set(frc::DoubleSolenoid::Value::kForward);
-			}
-
 			// drive with tank style (use both sticks)
-			myRobot.TankDrive(stick, 1, stick, 5);
+			myRobot.TankDrive(stick, 1, 5);
 			//myMotor.Set(1);
-
-			/**
-			  int speedLimit = 1;
-			  //use PID controller to smoothly change distance (convert to speed)
-			if(abs(stick.GetRawAxis(2))>speedLimit){
-				myPID.SetSetpoint( curMaxSpeed*(stick.GetRawAxis(2)/abs(stick.GetRawAxis(2)))*speedLimit);
-			}
-			else{
-				myPID.SetSetpoint(stick.GetRawAxis(2));
-			}
-			**/
 			
 			frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
 			frc::SmartDashboard::PutNumber("Current Pressure psi", myCompressor.GetCompressorCurrent());
-			frc::SmartDashboard::PutNumber("Left Encoder Value", leftDriveEncoder.GetRaw());
-			frc::SmartDashboard::PutNumber("Right Encoder Value", rightDriveEncoder.GetRaw());
+			frc::SmartDashboard::PutNumber("Left Encoder Value", myRobot.leftDriveEncoder->GetRaw());
+			frc::SmartDashboard::PutNumber("Right Encoder Value", myRobot.rightDriveEncoder->GetRaw());
 
 			// wait for a motor update time
 			frc::Wait(0.005);
+
 			//possibility to prevent waiting too long?
-			//if((.005-(curTime-initTime))>0){frc::Wait(0.005 - (curTime-initTime));}
+			/**while(not IsNewDataAvailable()){
+				frc::Wait(0.001);
+			}
+			**/
 		}
 	}
 
