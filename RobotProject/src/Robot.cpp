@@ -19,7 +19,7 @@
 
 class VPBSDrive {
 	private:
-		double highMaxSpeed = 16.00; //guess
+		//double highMaxSpeed = 16.00; //guess
 		double lowMaxSpeed = 9.00; //guess
 		double curMaxSpeed = lowMaxSpeed; //a good default
 		double dPerPulse = 2.0; //no clue on
@@ -27,12 +27,12 @@ class VPBSDrive {
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
 		frc::Spark* lSide [3];
-		frc::DoubleSolenoid* gearShifter;
+		//frc::DoubleSolenoid* gearShifter;
 
 	public:
 		//class scope variables
-		frc::Encoder* rightDriveEncoder;
-		frc::Encoder* leftDriveEncoder;
+		//frc::Encoder* rightDriveEncoder;
+		//frc::Encoder* leftDriveEncoder;
 
 		//init function
 		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
@@ -45,6 +45,10 @@ class VPBSDrive {
 			lSide[1] = new frc::Spark(clm);
 			lSide[2] = new frc::Spark(blm);
 
+			for(int i = 0; i<3; i++){
+				lSide[i]->SetInverted(true);
+			}
+			/**
 			//encoder name {port A, port B, reversed?, Accuracy/Precision}
 			rightDriveEncoder = new frc::Encoder(reA, reB, false, Encoder::EncodingType::k1X);
 			leftDriveEncoder = new frc::Encoder(leA, leB, false, Encoder::EncodingType::k1X);
@@ -55,10 +59,12 @@ class VPBSDrive {
 			//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
 			gearShifter = new frc::DoubleSolenoid(solA, solB );
 			//frc::Solenoid mySingleSolenoid { 1 };
+			 **/
 		}
 		virtual ~VPBSDrive() = default;
 		//mimics normal tank drive but adds automatic shifting
 		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
+			/**
 			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
 				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
@@ -69,7 +75,7 @@ class VPBSDrive {
 				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
 				this->curMaxSpeed = this->lowMaxSpeed;
 			}
-
+			**/
 			for(int i = 0; i < 3; i++){
 				this->rSide[i]->Set(stick->GetRawAxis(rAxis));
 			}
@@ -78,6 +84,7 @@ class VPBSDrive {
 			}
 		}
 		void Drive (double mag, double curve){
+			/**
 			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
 				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
@@ -88,6 +95,7 @@ class VPBSDrive {
 				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
 				this->curMaxSpeed = this->lowMaxSpeed;
 			}
+			**/
 			double ratio;
 			if(curve<0){
 				ratio = (std::log10(-curve) - this->sensitivity)/(std::log10(-curve) + this->sensitivity);
@@ -162,7 +170,7 @@ class VPBSDrive {
  * instead if you're new.
  */
 class Robot: public frc::SampleRobot {
-	VPBSDrive myRobot = VPBSDrive(1,3,5,0,1,2,0,1,2,3,1,2); // robot drive system,
+	VPBSDrive myRobot = VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system,
 	frc::Joystick* stick = new frc::Joystick(0); // only joystick
 
 	frc::SendableChooser<std::string> chooser;
@@ -175,7 +183,7 @@ class Robot: public frc::SampleRobot {
 	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
 	//frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
 
-	frc::Compressor myCompressor {0};
+	//frc::Compressor myCompressor {0};
 
 public:
 	Robot() {
@@ -187,6 +195,7 @@ public:
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser);
+		std::cout<<"this is std::out";
 	}
 
 	/*
@@ -233,10 +242,10 @@ public:
 			myRobot.TankDrive(stick, 1, 5);
 			//myMotor.Set(1);
 			
-			frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
-			frc::SmartDashboard::PutNumber("Current Pressure psi", myCompressor.GetCompressorCurrent());
-			frc::SmartDashboard::PutNumber("Left Encoder Value", myRobot.leftDriveEncoder->GetRaw());
-			frc::SmartDashboard::PutNumber("Right Encoder Value", myRobot.rightDriveEncoder->GetRaw());
+			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
+			//frc::SmartDashboard::PutNumber("Current Pressure psi", myCompressor.GetCompressorCurrent());
+			//frc::SmartDashboard::PutNumber("Left Encoder Value", myRobot.leftDriveEncoder->GetRaw());
+			//frc::SmartDashboard::PutNumber("Right Encoder Value", myRobot.rightDriveEncoder->GetRaw());
 
 			// wait for a motor update time
 			frc::Wait(0.005);
