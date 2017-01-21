@@ -18,8 +18,7 @@
 
 
 class VPBSDrive {
-	public:
-		//class scope variables
+	private:
 		double highMaxSpeed = 16.00; //guess
 		double lowMaxSpeed = 9.00; //guess
 		double curMaxSpeed = lowMaxSpeed; //a good default
@@ -28,9 +27,12 @@ class VPBSDrive {
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
 		frc::Spark* lSide [3];
+		frc::DoubleSolenoid* gearShifter;
+
+	public:
+		//class scope variables
 		frc::Encoder* rightDriveEncoder;
 		frc::Encoder* leftDriveEncoder;
-		frc::DoubleSolenoid* gearShifter;
 
 		//init function
 		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
