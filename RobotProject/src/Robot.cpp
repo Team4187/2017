@@ -33,6 +33,7 @@ class VPBSDrive {
 		//class scope variables
 		//frc::Encoder* rightDriveEncoder;
 		//frc::Encoder* leftDriveEncoder;
+		frc::DoubleSolenoid* gearShifter;
 
 		//init function
 		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
@@ -57,13 +58,15 @@ class VPBSDrive {
 			rightDriveEncoder->SetMinRate(minRate);
 			leftDriveEncoder->SetMinRate(minRate);
 			//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
+			**/
 			gearShifter = new frc::DoubleSolenoid(solA, solB );
 			//frc::Solenoid mySingleSolenoid { 1 };
-			 **/
 		}
 		virtual ~VPBSDrive() = default;
 		//mimics normal tank drive but adds automatic shifting
 		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
+			double rVal = stick->GetRawAxis(rAxis);
+			double lVal = stick->GetRawAxis(lAxis);
 			/**
 			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
@@ -76,11 +79,12 @@ class VPBSDrive {
 				this->curMaxSpeed = this->lowMaxSpeed;
 			}
 			**/
+
 			for(int i = 0; i < 3; i++){
-				this->rSide[i]->Set(stick->GetRawAxis(rAxis));
+				this->rSide[i]->Set(rVal);
 			}
 			for(int i = 0; i < 3; i++){
-				this->lSide[i]->Set(stick->GetRawAxis(lAxis));
+				this->lSide[i]->Set(lVal);
 			}
 		}
 		void Drive (double mag, double curve){
@@ -170,14 +174,13 @@ class VPBSDrive {
  * instead if you're new.
  */
 class Robot: public frc::SampleRobot {
-	VPBSDrive myRobot = VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system,
+	VPBSDrive* myRobot = new VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system,
 	frc::Joystick* stick = new frc::Joystick(0); // only joystick
 
 	frc::SendableChooser<std::string> chooser;
 	const std::string autoNameDefault = "Default";
 	const std::string autoNameCustom = "My Auto";
 
-	frc::Spark myMotor {6};
 	//frc::Spark *motorPtr = &myMotor;
 	//frc::Encoder *encoderPtr = &myEncoder;
 	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
@@ -188,14 +191,14 @@ class Robot: public frc::SampleRobot {
 public:
 	Robot() {
 		//Note SmartDashboard is not initialized here, wait until RobotInit to make SmartDashboard calls
-		myRobot.SetExpiration(0.1);
+		myRobot->SetExpiration(0.1);
 	}
 
 	void RobotInit() {
 		chooser.AddDefault(autoNameDefault, autoNameDefault);
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser);
-		std::cout<<"this is std::out";
+		std::cout<<"this is std::out"<<std::endl;
 	}
 
 	/*
@@ -217,17 +220,17 @@ public:
 		if (autoSelected == autoNameCustom) {
 			// Custom Auto goes here
 			std::cout << "Running custom Autonomous" << std::endl;
-			myRobot.SetSafetyEnabled(false);
-			myRobot.Drive(-0.5, 1.0); // spin at half speed
+			myRobot->SetSafetyEnabled(false);
+			myRobot->Drive(-0.5, 1.0); // spin at half speed
 			frc::Wait(2.0);                // for 2 seconds
-			myRobot.Drive(0.0, 0.0);  // stop robot
+			myRobot->Drive(0.0, 0.0);  // stop robot
 		} else {
 			// Default Auto goes here
 			std::cout << "Running default Autonomous" << std::endl;
-			myRobot.SetSafetyEnabled(false);
-			myRobot.Drive(-0.5, 0.0); // drive forwards half speed
+			myRobot->SetSafetyEnabled(false);
+			myRobot->Drive(-0.5, 0.0); // drive forwards half speed
 			frc::Wait(2.0);                // for 2 seconds
-			myRobot.Drive(0.0, 0.0);  // stop robot
+			myRobot->Drive(0.0, 0.0);  // stop robot
 		}
 	}
 
@@ -235,13 +238,33 @@ public:
 	 * Runs the motors with arcade steering.
 	 */
 	void OperatorControl() override {
-		myRobot.SetSafetyEnabled(true);
+		myRobot->SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
-
 			// drive with tank style (use both sticks)
-			myRobot.TankDrive(stick, 1, 5);
+			/**
+			if(doorsAreOpening){
+				myRobot->StopMotor();
+			}
+			//winch code
+			else if(stick->GetRawButton(0)){
+				myWinchMotor->Set(1);
+				if(pitch > 45){
+					myRobot->StopMotor();
+				}
+				else myRobot->TankDrive(stick, 1, 5);
+			}
+			else {
+				myRobot->TankDrive(stick, 1, 5);
+			}
+			**/
+			myRobot->TankDrive(stick, 1, 5);
+			if (stick->GetRawButton(1)){
+				myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
+			}
+			if (stick->GetRawButton(2)) {
+				myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
+			}
 			//myMotor.Set(1);
-			
 			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
 			//frc::SmartDashboard::PutNumber("Current Pressure psi", myCompressor.GetCompressorCurrent());
 			//frc::SmartDashboard::PutNumber("Left Encoder Value", myRobot.leftDriveEncoder->GetRaw());
@@ -263,6 +286,12 @@ public:
 	 */
 	void Test() override {
 
+		if (stick->GetRawButton(1)){
+			myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
+		}
+		if (stick->GetRawButton(2)) {
+			myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
+		}
 	}
 };
 
