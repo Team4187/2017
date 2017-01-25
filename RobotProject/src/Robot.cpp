@@ -15,25 +15,34 @@
 #include <Compressor.h>
 #include <Solenoid.h>
 #include <DoubleSolenoid.h>
+#include <PowerDistributionPanel.h>
 
 
 class VPBSDrive {
 	private:
 		//double highMaxSpeed = 16.00; //guess
 		double lowMaxSpeed = 9.00; //guess
+		double highMaxSpeed = 18.00; //another guess
 		double curMaxSpeed = lowMaxSpeed; //a good default
+		double lowSpeedGov = 0.9; //literally minimal governing
 		double dPerPulse = 2.0; //no clue on
 		double minRate = 2.0; //no clue on
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
 		frc::Spark* lSide [3];
-		//frc::DoubleSolenoid* gearShifter;
+		frc::DoubleSolenoid* gearShifter;
+		double curVolt;
+		double lowVolt;
+		frc::PowerDistributionPanel* pdp;
+		double minVolt = 0.8;
+		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kReverse;
+		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kForward;
 
 	public:
 		//class scope variables
 		//frc::Encoder* rightDriveEncoder;
 		//frc::Encoder* leftDriveEncoder;
-		frc::DoubleSolenoid* gearShifter;
+		//frc::DoubleSolenoid* gearShifter;
 
 		//init function
 		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
@@ -45,7 +54,6 @@ class VPBSDrive {
 			lSide[0] = new frc::Spark(flm);
 			lSide[1] = new frc::Spark(clm);
 			lSide[2] = new frc::Spark(blm);
-
 			for(int i = 0; i<3; i++){
 				lSide[i]->SetInverted(true);
 			}
@@ -60,25 +68,47 @@ class VPBSDrive {
 			//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
 			**/
 			gearShifter = new frc::DoubleSolenoid(solA, solB );
+			gearShifter->Set(this->lGear);
 			//frc::Solenoid mySingleSolenoid { 1 };
+			pdp = new PowerDistributionPanel();
+			curVolt = pdp->GetVoltage();
+			lowVolt = curVolt;
 		}
 		virtual ~VPBSDrive() = default;
 		//mimics normal tank drive but adds automatic shifting
 		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
 			double rVal = stick->GetRawAxis(rAxis);
 			double lVal = stick->GetRawAxis(lAxis);
+			this->curVolt = this->pdp->GetVoltage();
+			if(this->curVolt < this->lowVolt){
+				this->lowVolt = this->curVolt;
+			}
+
+			//low voltage handling
+			if(this->curVolt < this->minVolt){
+				rVal *= .5;
+				lVal *= .5;
+			}
+			frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
 			/**
 			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
-				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
+				this->gearShifter->Set(this->hGear);
 				this->curMaxSpeed = this->highMaxSpeed;
 			}
 			if(this->leftDriveEncoder->GetRate() <= lowMaxSpeed && this->rightDriveEncoder->GetRate() <= lowMaxSpeed){
 				//if both sides are moving slower than max speed then shift to low gear
-				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
+				this->gearShifter->Set(this->lGear);
 				this->curMaxSpeed = this->lowMaxSpeed;
 			}
 			**/
+
+			if(curMaxSpeed == lowMaxSpeed){
+				int rSign = (std::abs(rVal)/rVal);
+				int lSign = (std::abs(lVal)/lVal);
+				rVal = rSign * std::min(std::abs(rVal), lowSpeedGov);
+				lVal = lSign * std::min(std::abs(lVal), lowSpeedGov);
+			}
 
 			for(int i = 0; i < 3; i++){
 				this->rSide[i]->Set(rVal);
@@ -86,6 +116,7 @@ class VPBSDrive {
 			for(int i = 0; i < 3; i++){
 				this->lSide[i]->Set(lVal);
 			}
+
 		}
 		void Drive (double mag, double curve){
 			/**
@@ -128,6 +159,23 @@ class VPBSDrive {
 				}
 			}
 
+		}
+		void ToggleGearShifter(){
+			if(this->curMaxSpeed == this->lowMaxSpeed){
+				this->gearShifter->Set(this->hGear);
+			}
+			if(this->curMaxSpeed == this->highMaxSpeed){
+				this->gearShifter->Set(this->lGear);
+			}
+		}
+		double GetCurVoltage(){
+			return this->curVolt;
+		}
+		double GetLowVoltage(){
+			return this->lowVolt;
+		}
+		double GetMinVoltage(){
+			return this->minVolt;
 		}
 		void SetExpiration(double timeout){
 			for(int i = 0; i < 3; i++){
@@ -259,10 +307,13 @@ public:
 			**/
 			myRobot->TankDrive(stick, 1, 5);
 			if (stick->GetRawButton(1)){
-				myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
+				myRobot->ToggleGearShifter();
 			}
 			if (stick->GetRawButton(2)) {
-				myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
+				myRobot->ToggleGearShifter();
+			}
+			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
+				//stop intake && other junk like compressor
 			}
 			//myMotor.Set(1);
 			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
