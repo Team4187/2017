@@ -20,29 +20,49 @@
 
 class VPBSDrive {
 	private:
-		//double highMaxSpeed = 16.00; //guess
+		//driving
 		double lowMaxSpeed = 9.00; //guess
 		double highMaxSpeed = 18.00; //another guess
 		double curMaxSpeed = lowMaxSpeed; //a good default
 		double lowSpeedGov = 0.9; //literally minimal governing
-		double dPerPulse = 2.0; //no clue on
-		double minRate = 2.0; //no clue on
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
 		frc::Spark* lSide [3];
+		//PID Driving
+		double rCurSpeed = 0;
+		double rSetSpeed = rCurSpeed;
+		double rPrevSpeed = rCurSpeed;
+		double rTErr = 0;
+		double rPrevErr = 0;
+		double lCurSpeed = 0;
+		double lSetSpeed = lCurSpeed;
+		double lPrevSpeed = lCurSpeed;
+		double lTErr = 0;
+		double lPrevErr = 0;
+		double pK = 1;
+		double iK = 1;
+		double dK = 1;
+		//pneumatics
 		frc::DoubleSolenoid* gearShifter;
+		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kReverse;
+		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kForward;
+		//encoder
+		double wheelDiameter = 4; //in inches
+		double eWRatio = 2.5; //encoder revolutions /wheel revolutions
+		double pPR = 48; //encoder settings of pulses per revolution
+		double dPerPulse = (wheelDiameter * 3.1415 * eWRatio)/pPR; //in inches
+		double minRate = 1; //inches per second? to be considered moving
+
+		//other stuff
 		double curVolt;
 		double lowVolt;
 		frc::PowerDistributionPanel* pdp;
 		double minVolt = 0.8;
-		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kReverse;
-		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kForward;
 
 	public:
 		//class scope variables
-		//frc::Encoder* rightDriveEncoder;
-		//frc::Encoder* leftDriveEncoder;
-		//frc::DoubleSolenoid* gearShifter;
+		frc::Encoder* rDriveEncoder;
+		frc::Encoder* lDriveEncoder;
 
 		//init function
 		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
@@ -57,16 +77,16 @@ class VPBSDrive {
 			for(int i = 0; i<3; i++){
 				lSide[i]->SetInverted(true);
 			}
-			/**
+
 			//encoder name {port A, port B, reversed?, Accuracy/Precision}
-			rightDriveEncoder = new frc::Encoder(reA, reB, false, Encoder::EncodingType::k1X);
-			leftDriveEncoder = new frc::Encoder(leA, leB, false, Encoder::EncodingType::k1X);
-			rightDriveEncoder->SetDistancePerPulse(dPerPulse);
-			leftDriveEncoder->SetDistancePerPulse(dPerPulse);
-			rightDriveEncoder->SetMinRate(minRate);
-			leftDriveEncoder->SetMinRate(minRate);
+			rDriveEncoder = new frc::Encoder(reA, reB, false, Encoder::EncodingType::k1X);
+			lDriveEncoder = new frc::Encoder(leA, leB, false, Encoder::EncodingType::k1X);
+			rDriveEncoder->SetDistancePerPulse(dPerPulse);
+			lDriveEncoder->SetDistancePerPulse(dPerPulse);
+			rDriveEncoder->SetMinRate(minRate);
+			lDriveEncoder->SetMinRate(minRate);
 			//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
-			**/
+
 			gearShifter = new frc::DoubleSolenoid(solA, solB );
 			gearShifter->Set(this->lGear);
 			//frc::Solenoid mySingleSolenoid { 1 };
@@ -90,13 +110,14 @@ class VPBSDrive {
 				lVal *= .5;
 			}
 			frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
+
 			/**
-			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
+			if(this->lDriveEncoder->GetRate() > lowMaxSpeed && this->rDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
 				this->gearShifter->Set(this->hGear);
 				this->curMaxSpeed = this->highMaxSpeed;
 			}
-			if(this->leftDriveEncoder->GetRate() <= lowMaxSpeed && this->rightDriveEncoder->GetRate() <= lowMaxSpeed){
+			if(this->lDriveEncoder->GetRate() <= lowMaxSpeed && this->rDriveEncoder->GetRate() <= lowMaxSpeed){
 				//if both sides are moving slower than max speed then shift to low gear
 				this->gearShifter->Set(this->lGear);
 				this->curMaxSpeed = this->lowMaxSpeed;
@@ -110,22 +131,68 @@ class VPBSDrive {
 				lVal = lSign * std::min(std::abs(lVal), lowSpeedGov);
 			}
 
-			for(int i = 0; i < 3; i++){
-				this->rSide[i]->Set(rVal);
-			}
-			for(int i = 0; i < 3; i++){
-				this->lSide[i]->Set(lVal);
-			}
+			//PID loop stuff
+			double rPVal;
+			double rIVal;
+			double rDVal;
+			double rCor;
+			double rErr;
 
+			double lPVal;
+			double lIVal;
+			double lDVal;
+			double lCor;
+			double lErr;
+
+			this->rCurSpeed = this->rDriveEncoder->GetRate();
+			this->lCurSpeed = this->lDriveEncoder->GetRate();
+			this->rSetSpeed = rVal * this->curMaxSpeed;
+			this->lSetSpeed = lVal * this->curMaxSpeed;
+
+			rErr = (this->rSetSpeed - this->rCurSpeed)/this->curMaxSpeed;
+			lErr = (this->lSetSpeed - this->lCurSpeed)/this->curMaxSpeed;
+
+			//p
+			rPVal = this->pK * rErr;
+			lPVal = this->pK * lErr;
+			//i
+			this->rTErr += rErr;
+			this->lTErr += lErr;
+			rIVal = this->iK * this->rTErr;
+			lIVal = this->iK * this->lTErr;
+			//d
+			rDVal = this->dK * (rErr - this->rPrevErr);
+			lDVal = this->dK * (lErr - this->lPrevErr);
+			this->rPrevErr = rErr;
+			this->lPrevErr = lErr;
+			//total corrections
+			rCor = rPVal + rIVal + rDVal;
+			lCor = lPVal + lIVal + lDVal;
+			if(std::abs(rCor) > 1){
+				rCor = std::abs(rCor)/rCor;
+			}
+			if(std::abs(lCor)>1){
+				lCor = std::abs(lCor)/lCor;
+			}
+			for(int i = 0; i < 3; i++){
+				this->rSide[i]->Set(rCor);
+			}
+			for(int i = 0; i < 3; i++){
+				this->lSide[i]->Set(lCor);
+			}
+			frc::SmartDashboard::PutNumber("rCurSpeed", this->rCurSpeed);
+			frc::SmartDashboard::PutNumber("lCurSpeed", this->lCurSpeed);
+			frc::SmartDashboard::PutNumber("rCor", rCor);
+			frc::SmartDashboard::PutNumber("lCor", lCor);
 		}
 		void Drive (double mag, double curve){
 			/**
-			if(this->leftDriveEncoder->GetRate() > lowMaxSpeed && this->rightDriveEncoder->GetRate() > lowMaxSpeed){
+			if(this->lDriveEncoder->GetRate() > lowMaxSpeed && this->rDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
 				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
 				this->curMaxSpeed = this->highMaxSpeed;
 			}
-			if(this->leftDriveEncoder->GetRate() <= lowMaxSpeed && this->rightDriveEncoder->GetRate() <= lowMaxSpeed){
+			if(this->lDriveEncoder->GetRate() <= lowMaxSpeed && this->rDriveEncoder->GetRate() <= lowMaxSpeed){
 				//if both sides are moving slower than max speed then shift to low gear
 				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
 				this->curMaxSpeed = this->lowMaxSpeed;
@@ -167,6 +234,12 @@ class VPBSDrive {
 			if(this->curMaxSpeed == this->highMaxSpeed){
 				this->gearShifter->Set(this->lGear);
 			}
+		}
+		void DownShift(){
+			this->gearShifter->Set(this->lGear);
+		}
+		void UpShift(){
+			this->gearShifter->Set(this->hGear);
 		}
 		double GetCurVoltage(){
 			return this->curVolt;
@@ -307,10 +380,10 @@ public:
 			**/
 			myRobot->TankDrive(stick, 1, 5);
 			if (stick->GetRawButton(1)){
-				myRobot->ToggleGearShifter();
+				myRobot->UpShift();
 			}
 			if (stick->GetRawButton(2)) {
-				myRobot->ToggleGearShifter();
+				myRobot->DownShift();
 			}
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
 				//stop intake && other junk like compressor
@@ -336,13 +409,6 @@ public:
 	 * Runs during test mode
 	 */
 	void Test() override {
-
-		if (stick->GetRawButton(1)){
-			myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
-		}
-		if (stick->GetRawButton(2)) {
-			myRobot->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
-		}
 	}
 };
 
