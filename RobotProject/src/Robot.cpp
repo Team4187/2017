@@ -39,9 +39,9 @@ class VPBSDrive {
 		double lPrevSpeed = lCurSpeed;
 		double lTErr = 0;
 		double lPrevErr = 0;
-		double pK = 1;
-		double iK = 1;
-		double dK = 1;
+		double pK = .1;
+		double iK = .1;
+		double dK = .1;
 		//pneumatics
 		frc::DoubleSolenoid* gearShifter;
 		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kReverse;
@@ -169,10 +169,10 @@ class VPBSDrive {
 			rCor = rPVal + rIVal + rDVal;
 			lCor = lPVal + lIVal + lDVal;
 			if(std::abs(rCor) > 1){
-				rCor = std::abs(rCor)/rCor;
+				rCor = this->lowSpeedGov*std::abs(rCor)/rCor;
 			}
 			if(std::abs(lCor)>1){
-				lCor = std::abs(lCor)/lCor;
+				lCor = this->lowSpeedGov*std::abs(lCor)/lCor;
 			}
 			for(int i = 0; i < 3; i++){
 				this->rSide[i]->Set(rCor);
@@ -184,6 +184,13 @@ class VPBSDrive {
 			frc::SmartDashboard::PutNumber("lCurSpeed", this->lCurSpeed);
 			frc::SmartDashboard::PutNumber("rCor", rCor);
 			frc::SmartDashboard::PutNumber("lCor", lCor);
+			frc::SmartDashboard::PutNumber("rVal", rVal);
+			frc::SmartDashboard::PutNumber("rPVal", rPVal);
+			frc::SmartDashboard::PutNumber("rIVal", rIVal);
+			frc::SmartDashboard::PutNumber("rDVal", rDVal);
+			std::cout<<"rPVal "<< rPVal<< std::endl;
+			std::cout<<"rIVal "<< rIVal<<std::endl;
+			std::cout<<"rDVal "<< rDVal<<std::endl;
 		}
 		void Drive (double mag, double curve){
 			/**
