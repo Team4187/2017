@@ -48,7 +48,7 @@ class VPBSDrive {
 		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kForward;
 		//encoder
 		double wheelDiameter = 4; //in inches
-		double eWRatio = 2.5; //encoder revolutions /wheel revolutions
+		double eWRatio = 1/2.5; //wheel revolutions / encoder revolutions
 		double pPR = 48; //encoder settings of pulses per revolution
 		double dPerPulse = (wheelDiameter * 3.1415 * eWRatio)/pPR; //in inches
 		double minRate = 1; //inches per second? to be considered moving
@@ -146,11 +146,9 @@ class VPBSDrive {
 
 			this->rCurSpeed = this->rDriveEncoder->GetRate();
 			this->lCurSpeed = this->lDriveEncoder->GetRate();
-			this->rSetSpeed = rVal * this->curMaxSpeed;
-			this->lSetSpeed = lVal * this->curMaxSpeed;
 
-			rErr = (this->rSetSpeed - this->rCurSpeed)/this->curMaxSpeed;
-			lErr = (this->lSetSpeed - this->lCurSpeed)/this->curMaxSpeed;
+			rErr = -rVal - (this->rCurSpeed/this->curMaxSpeed);
+			lErr = -lVal - (this->lCurSpeed/this->curMaxSpeed);
 
 			//p
 			rPVal = this->pK * rErr;
@@ -166,8 +164,8 @@ class VPBSDrive {
 			this->rPrevErr = rErr;
 			this->lPrevErr = lErr;
 			//total corrections
-			rCor = rPVal + rIVal + rDVal;
-			lCor = lPVal + lIVal + lDVal;
+			rCor = rPVal + rIVal + rDVal + (this->rCurSpeed/this->curMaxSpeed);
+			lCor = lPVal + lIVal + lDVal + (this->lCurSpeed/this->curMaxSpeed);
 			if(std::abs(rCor) > 1){
 				rCor = this->lowSpeedGov*std::abs(rCor)/rCor;
 			}
@@ -175,10 +173,10 @@ class VPBSDrive {
 				lCor = this->lowSpeedGov*std::abs(lCor)/lCor;
 			}
 			for(int i = 0; i < 3; i++){
-				this->rSide[i]->Set(rCor);
+				this->rSide[i]->Set(-rCor);
 			}
 			for(int i = 0; i < 3; i++){
-				this->lSide[i]->Set(lCor);
+				this->lSide[i]->Set(-lCor);
 			}
 			frc::SmartDashboard::PutNumber("rCurSpeed", this->rCurSpeed);
 			frc::SmartDashboard::PutNumber("lCurSpeed", this->lCurSpeed);
@@ -416,6 +414,11 @@ public:
 	 * Runs during test mode
 	 */
 	void Test() override {
+		while(IsEnabled()){
+			frc::SmartDashboard::PutNumber("encoder", myRobot->rDriveEncoder->GetRaw());
+			std::cout<<myRobot->rDriveEncoder->GetDistance()<<std::endl;
+			frc::Wait(.5);
+		}
 	}
 };
 
