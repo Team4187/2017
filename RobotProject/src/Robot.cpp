@@ -21,10 +21,10 @@
 class VPBSDrive {
 	private:
 		//driving
-		double lowMaxSpeed = 9.00; //guess
-		double highMaxSpeed = 18.00; //another guess
-		double curMaxSpeed = lowMaxSpeed; //a good default
-		double lowSpeedGov = 0.9; //literally minimal governing
+		double lowMaxSpeed = 100.00; //guess
+		double highMaxSpeed = 340.00; //another guess
+		double curMaxSpeed = highMaxSpeed; //a good default
+		double lowSpeedGov = 1; //literally minimal governing
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
 		frc::Spark* lSide [3];
@@ -39,17 +39,17 @@ class VPBSDrive {
 		double lPrevSpeed = lCurSpeed;
 		double lTErr = 0;
 		double lPrevErr = 0;
-		double pK = .1;
-		double iK = .1;
-		double dK = .1;
+		double pK = .5;
+		double iK = 0;
+		double dK = 0;
 		//pneumatics
 		frc::DoubleSolenoid* gearShifter;
-		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kReverse;
-		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kForward;
+		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kReverse;
+		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kForward;
 		//encoder
 		double wheelDiameter = 4; //in inches
-		double eWRatio = 1/2.5; //wheel revolutions / encoder revolutions
-		double pPR = 48; //encoder settings of pulses per revolution
+		double eWRatio = 1.00/3.00; //wheel revolutions / encoder revolutions
+		double pPR = 48.00; //encoder settings of pulses per revolution
 		double dPerPulse = (wheelDiameter * 3.1415 * eWRatio)/pPR; //in inches
 		double minRate = 1; //inches per second? to be considered moving
 
@@ -57,7 +57,7 @@ class VPBSDrive {
 		double curVolt;
 		double lowVolt;
 		frc::PowerDistributionPanel* pdp;
-		double minVolt = 0.8;
+		double minVolt = 9.0;
 
 	public:
 		//class scope variables
@@ -80,7 +80,7 @@ class VPBSDrive {
 
 			//encoder name {port A, port B, reversed?, Accuracy/Precision}
 			rDriveEncoder = new frc::Encoder(reA, reB, false, Encoder::EncodingType::k1X);
-			lDriveEncoder = new frc::Encoder(leA, leB, false, Encoder::EncodingType::k1X);
+			lDriveEncoder = new frc::Encoder(leA, leB, true, Encoder::EncodingType::k1X);
 			rDriveEncoder->SetDistancePerPulse(dPerPulse);
 			lDriveEncoder->SetDistancePerPulse(dPerPulse);
 			rDriveEncoder->SetMinRate(minRate);
@@ -99,6 +99,17 @@ class VPBSDrive {
 		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
 			double rVal = stick->GetRawAxis(rAxis);
 			double lVal = stick->GetRawAxis(lAxis);
+
+			//Null Zone for Joysticks
+			if (std::abs(rVal) < .05 ) {
+				rVal = 0.0;
+			}
+
+			if (std::abs(lVal) < .05 ) {
+				lVal = 0.0;
+			}
+
+
 			this->curVolt = this->pdp->GetVoltage();
 			if(this->curVolt < this->lowVolt){
 				this->lowVolt = this->curVolt;
@@ -172,23 +183,22 @@ class VPBSDrive {
 			if(std::abs(lCor)>1){
 				lCor = this->lowSpeedGov*std::abs(lCor)/lCor;
 			}
+
 			for(int i = 0; i < 3; i++){
 				this->rSide[i]->Set(-rCor);
 			}
+			/**
 			for(int i = 0; i < 3; i++){
 				this->lSide[i]->Set(-lCor);
 			}
+			**/
+			frc::SmartDashboard::PutNumber("rDis", this->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("rCurSpeed", this->rCurSpeed);
 			frc::SmartDashboard::PutNumber("lCurSpeed", this->lCurSpeed);
 			frc::SmartDashboard::PutNumber("rCor", rCor);
 			frc::SmartDashboard::PutNumber("lCor", lCor);
 			frc::SmartDashboard::PutNumber("rVal", rVal);
-			frc::SmartDashboard::PutNumber("rPVal", rPVal);
-			frc::SmartDashboard::PutNumber("rIVal", rIVal);
-			frc::SmartDashboard::PutNumber("rDVal", rDVal);
-			std::cout<<"rPVal "<< rPVal<< std::endl;
-			std::cout<<"rIVal "<< rIVal<<std::endl;
-			std::cout<<"rDVal "<< rDVal<<std::endl;
+			frc::SmartDashboard::PutNumber("curMaxSpeed", this->curMaxSpeed);
 		}
 		void Drive (double mag, double curve){
 			/**
@@ -242,9 +252,11 @@ class VPBSDrive {
 		}
 		void DownShift(){
 			this->gearShifter->Set(this->lGear);
+			this->curMaxSpeed = this->lowMaxSpeed;
 		}
 		void UpShift(){
 			this->gearShifter->Set(this->hGear);
+			this->curMaxSpeed = this->highMaxSpeed;
 		}
 		double GetCurVoltage(){
 			return this->curVolt;
@@ -325,6 +337,7 @@ public:
 		chooser.AddObject(autoNameCustom, autoNameCustom);
 		frc::SmartDashboard::PutData("Auto Modes", &chooser);
 		std::cout<<"this is std::out"<<std::endl;
+		myRobot->DownShift();
 	}
 
 	/*
@@ -383,7 +396,8 @@ public:
 				myRobot->TankDrive(stick, 1, 5);
 			}
 			**/
-			myRobot->TankDrive(stick, 1, 5);
+			myRobot->TankDrive(stick, 5, 1);
+			myRobot->rDriveEncoder->GetRate();
 			if (stick->GetRawButton(1)){
 				myRobot->UpShift();
 			}
@@ -415,8 +429,10 @@ public:
 	 */
 	void Test() override {
 		while(IsEnabled()){
-			frc::SmartDashboard::PutNumber("encoder", myRobot->rDriveEncoder->GetRaw());
-			std::cout<<myRobot->rDriveEncoder->GetDistance()<<std::endl;
+			frc::SmartDashboard::PutNumber("encoderRaw", myRobot->rDriveEncoder->GetRaw());
+			frc::SmartDashboard::PutNumber("encoderDis", myRobot->rDriveEncoder->GetDistance());
+			frc::SmartDashboard::PutNumber("encoderRate", myRobot->rDriveEncoder->GetRate());
+			std::cout<<myRobot->rDriveEncoder->GetRate()<<std::endl;
 			frc::Wait(.5);
 		}
 	}
