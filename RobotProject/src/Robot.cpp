@@ -23,7 +23,7 @@ class VPBSDrive {
 		//driving
 		double lowMaxSpeed = 100.00; //guess
 		double highMaxSpeed = 340.00; //another guess
-		double curMaxSpeed = highMaxSpeed; //a good default
+		double curMaxSpeed = lowMaxSpeed; //a good default
 		double lowSpeedGov = 1; //literally minimal governing
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
@@ -39,8 +39,8 @@ class VPBSDrive {
 		double lPrevSpeed = lCurSpeed;
 		double lTErr = 0;
 		double lPrevErr = 0;
-		double pK = .5;
-		double iK = 0;
+		double pK = 0.5;
+		double iK = 0.025;
 		double dK = 0;
 		//pneumatics
 		frc::DoubleSolenoid* gearShifter;
@@ -95,72 +95,24 @@ class VPBSDrive {
 			lowVolt = curVolt;
 		}
 		virtual ~VPBSDrive() = default;
-		//mimics normal tank drive but adds automatic shifting
-		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
-			double rVal = stick->GetRawAxis(rAxis);
-			double lVal = stick->GetRawAxis(lAxis);
-
-			//Null Zone for Joysticks
-			if (std::abs(rVal) < .05 ) {
-				rVal = 0.0;
-			}
-
-			if (std::abs(lVal) < .05 ) {
-				lVal = 0.0;
-			}
-
-
-			this->curVolt = this->pdp->GetVoltage();
-			if(this->curVolt < this->lowVolt){
-				this->lowVolt = this->curVolt;
-			}
-
-			//low voltage handling
-			if(this->curVolt < this->minVolt){
-				rVal *= .5;
-				lVal *= .5;
-			}
-			frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
-
-			/**
-			if(this->lDriveEncoder->GetRate() > lowMaxSpeed && this->rDriveEncoder->GetRate() > lowMaxSpeed){
-				//if both sides are moving at low max speed or higher then shift to high gear
-				this->gearShifter->Set(this->hGear);
-				this->curMaxSpeed = this->highMaxSpeed;
-			}
-			if(this->lDriveEncoder->GetRate() <= lowMaxSpeed && this->rDriveEncoder->GetRate() <= lowMaxSpeed){
-				//if both sides are moving slower than max speed then shift to low gear
-				this->gearShifter->Set(this->lGear);
-				this->curMaxSpeed = this->lowMaxSpeed;
-			}
-			**/
-
-			if(curMaxSpeed == lowMaxSpeed){
-				int rSign = (std::abs(rVal)/rVal);
-				int lSign = (std::abs(lVal)/lVal);
-				rVal = rSign * std::min(std::abs(rVal), lowSpeedGov);
-				lVal = lSign * std::min(std::abs(lVal), lowSpeedGov);
-			}
-
-			//PID loop stuff
-			double rPVal;
-			double rIVal;
-			double rDVal;
-			double rCor;
-			double rErr;
-
-			double lPVal;
-			double lIVal;
-			double lDVal;
-			double lCor;
-			double lErr;
-
+		void DownShift(){
+			this->gearShifter->Set(this->lGear);
+			this->curMaxSpeed = this->lowMaxSpeed;
+		}
+		void UpShift(){
+			this->gearShifter->Set(this->hGear);
+			this->curMaxSpeed = this->highMaxSpeed;
+		}
+		void PIDDrive(double rVal, double lVal){
+			//PID driving using speed control with rVal and lVal being the goal percentage of max speed
+			//PID loop variables
+			double rPVal, rIVal, rDVal, rCor, rErr;
+			double lPVal, lIVal, lDVal, lCor, lErr;
 			this->rCurSpeed = this->rDriveEncoder->GetRate();
 			this->lCurSpeed = this->lDriveEncoder->GetRate();
-
+			//negated so positive is forward
 			rErr = -rVal - (this->rCurSpeed/this->curMaxSpeed);
 			lErr = -lVal - (this->lCurSpeed/this->curMaxSpeed);
-
 			//p
 			rPVal = this->pK * rErr;
 			lPVal = this->pK * lErr;
@@ -183,80 +135,109 @@ class VPBSDrive {
 			if(std::abs(lCor)>1){
 				lCor = this->lowSpeedGov*std::abs(lCor)/lCor;
 			}
-
+			if(curMaxSpeed == lowMaxSpeed){
+				int rSign = (std::abs(rCor)/rCor);
+				int lSign = (std::abs(lCor)/lCor);
+				rVal = rSign * std::min(std::abs(rCor), lowSpeedGov);
+				lVal = lSign * std::min(std::abs(lCor), lowSpeedGov);
+			}
+			//set motors to Correction Value, negative to set back since _Val was negated earlier
 			for(int i = 0; i < 3; i++){
 				this->rSide[i]->Set(-rCor);
 			}
-			/**
 			for(int i = 0; i < 3; i++){
 				this->lSide[i]->Set(-lCor);
 			}
-			**/
+			//report a bunch of Driving Values
 			frc::SmartDashboard::PutNumber("rDis", this->rDriveEncoder->GetDistance());
+			frc::SmartDashboard::PutNumber("lDis", this->lDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("rCurSpeed", this->rCurSpeed);
 			frc::SmartDashboard::PutNumber("lCurSpeed", this->lCurSpeed);
 			frc::SmartDashboard::PutNumber("rCor", rCor);
 			frc::SmartDashboard::PutNumber("lCor", lCor);
-			frc::SmartDashboard::PutNumber("rVal", rVal);
 			frc::SmartDashboard::PutNumber("curMaxSpeed", this->curMaxSpeed);
 		}
-		void Drive (double mag, double curve){
+		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
+			//mimics normal tank drive but adds automatic shifting and PID control, may comment out auto shift and just manual
+			double rVal = stick->GetRawAxis(rAxis);
+			double lVal = stick->GetRawAxis(lAxis);
+			//Null Zone for Joysticks
+			if (std::abs(rVal) < .05 ) {
+				rVal = 0.0;
+			}
+			if (std::abs(lVal) < .05 ) {
+				lVal = 0.0;
+			}
+			this->curVolt = this->pdp->GetVoltage();
+			if(this->curVolt < this->lowVolt){
+				this->lowVolt = this->curVolt;
+			}
+			//low voltage handling
+			if(this->curVolt < this->minVolt){
+				rVal *= .5;
+				lVal *= .5;
+			}
+			frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
 			/**
+			//auto shifting based on speed
 			if(this->lDriveEncoder->GetRate() > lowMaxSpeed && this->rDriveEncoder->GetRate() > lowMaxSpeed){
 				//if both sides are moving at low max speed or higher then shift to high gear
-				this->gearShifter->Set(frc::DoubleSolenoid::Value::kReverse);
-				this->curMaxSpeed = this->highMaxSpeed;
+				this->UpShift();
 			}
-			if(this->lDriveEncoder->GetRate() <= lowMaxSpeed && this->rDriveEncoder->GetRate() <= lowMaxSpeed){
+			if (this->lDriveEncoder->GetRate() < lowMaxSpeed && this->rDriveEncoder->GetRate() < lowMaxSpeed){
 				//if both sides are moving slower than max speed then shift to low gear
-				this->gearShifter->Set(frc::DoubleSolenoid::Value::kForward);
-				this->curMaxSpeed = this->lowMaxSpeed;
+				this->DownShift();
 			}
 			**/
+			//calls PID Drive with joystick values as arguments
+			this->PIDDrive(rVal, lVal);
+		}
+		void Drive (double mag, double curve){
+			//for auto
 			double ratio;
+			double rVal;
+			double lVal;
 			if(curve<0){
 				ratio = (std::log10(-curve) - this->sensitivity)/(std::log10(-curve) + this->sensitivity);
-				for(int i = 0; i < 3; i++){
-					this->rSide[i]->Set(mag);
-				}
-				for(int i = 0; i < 3; i++){
-					this->lSide[i]->Set(mag/ratio);
-				}
+				lVal = mag;
+				rVal = (mag/ratio);
 			}
 			else if(curve>0){
 				ratio = (std::log10(curve) - this->sensitivity)/(std::log10(curve) + this->sensitivity);
-				for(int i = 0; i < 3; i++){
-					this->rSide[i]->Set(mag/ratio);
-				}
-				for(int i = 0; i < 3; i++){
-					this->lSide[i]->Set(mag);
-				}
+				rVal = (mag/ratio);
+				lVal = (mag);
 			}
 			else {
-				for(int i = 0; i < 3; i++){
-					this->rSide[i]->Set(mag);
-				}
-				for(int i = 0; i < 3; i++){
-					this->lSide[i]->Set(mag);
-				}
+				rVal = (mag);
+				lVal = (mag);
 			}
-
+			//Call PID Drive w/ calculated rVal and lVal values as arguments for left and ride side set points
+			this->PIDDrive(rVal, lVal);
+		}
+		void DriveDis(double desiredDis, double epsilon){
+			//drive so many units +- epsilon forward (at the moment inches due to dPerPulse settings), negative should be backwards
+			double rStart = this->rDriveEncoder->GetDistance();
+			double curDis = rStart;
+			double goalDis = desiredDis + curDis;
+			double lowGoal = goalDis - epsilon;
+			double highGoal = goalDis + epsilon;
+			//uses just right side since they should work move in sync
+			while(curDis < lowGoal or curDis > highGoal){
+				//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances
+				double err = (curDis - goalDis)/std::abs(desiredDis);
+				this->PIDDrive(err, err);
+				curDis = this->rDriveEncoder->GetDistance();
+			}
+			//once at desiredDis, stop robot
+			this->Drive(0,0);
 		}
 		void ToggleGearShifter(){
 			if(this->curMaxSpeed == this->lowMaxSpeed){
-				this->gearShifter->Set(this->hGear);
+				this->UpShift();
 			}
 			if(this->curMaxSpeed == this->highMaxSpeed){
-				this->gearShifter->Set(this->lGear);
+				this->DownShift();
 			}
-		}
-		void DownShift(){
-			this->gearShifter->Set(this->lGear);
-			this->curMaxSpeed = this->lowMaxSpeed;
-		}
-		void UpShift(){
-			this->gearShifter->Set(this->hGear);
-			this->curMaxSpeed = this->highMaxSpeed;
 		}
 		double GetCurVoltage(){
 			return this->curVolt;
@@ -297,33 +278,18 @@ class VPBSDrive {
 				this->lSide[i]->StopMotor();
 			}
 		}
-
 };
-/**
- * This is a demo program showing the use of the RobotDrive class.
- * The SampleRobot class is the base of a robot application that will
- * automatically call your Autonomous and OperatorControl methods at the right
- * time as controlled by the switches on the driver station or the field
- * controls.
- *
- * WARNING: While it may look like a good choice to use for your code if you're
- * inexperienced, don't. Unless you know what you are doing, complex code will
- * be much more difficult under this system. Use IterativeRobot or Command-Based
- * instead if you're new.
- */
+
 class Robot: public frc::SampleRobot {
 	VPBSDrive* myRobot = new VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system,
 	frc::Joystick* stick = new frc::Joystick(0); // only joystick
 
-	frc::SendableChooser<std::string> chooser;
+	//frc::SendableChooser<std::string> chooser;
 	const std::string autoNameDefault = "Default";
-	const std::string autoNameCustom = "My Auto";
+	const std::string autoNameCustom = "myAuto";
 
 	//frc::Spark *motorPtr = &myMotor;
 	//frc::Encoder *encoderPtr = &myEncoder;
-	//frc::PIDController myPID { 1, .1, .01, encoderPtr, motorPtr};
-	//frc::PIDController myPID { 1,.1,.01, &myEncoder, &myMotor};
-
 	//frc::Compressor myCompressor {0};
 
 public:
@@ -333,9 +299,9 @@ public:
 	}
 
 	void RobotInit() {
-		chooser.AddDefault(autoNameDefault, autoNameDefault);
-		chooser.AddObject(autoNameCustom, autoNameCustom);
-		frc::SmartDashboard::PutData("Auto Modes", &chooser);
+		//chooser.AddDefault(autoNameDefault, autoNameDefault);
+		//chooser.AddObject(autoNameCustom, autoNameCustom);
+		//frc::SmartDashboard::PutData("Auto Modes", &chooser);
 		std::cout<<"this is std::out"<<std::endl;
 		myRobot->DownShift();
 	}
@@ -352,50 +318,28 @@ public:
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
 	void Autonomous() {
-		auto autoSelected = chooser.GetSelected();
-		// std::string autoSelected = frc::SmartDashboard::GetString("Auto Selector", autoNameDefault);
+		//auto autoSelected = chooser.GetSelected();
+		std::string autoSelected = frc::SmartDashboard::GetString("Auto Selector", autoNameDefault);
 		std::cout << "Auto selected: " << autoSelected << std::endl;
 
 		if (autoSelected == autoNameCustom) {
-			// Custom Auto goes here
-			std::cout << "Running custom Autonomous" << std::endl;
-			myRobot->SetSafetyEnabled(false);
-			myRobot->Drive(-0.5, 1.0); // spin at half speed
-			frc::Wait(2.0);                // for 2 seconds
-			myRobot->Drive(0.0, 0.0);  // stop robot
+			//drive forward 15 units (inches), +- 1 inches
+			myRobot->DriveDis(15,1);
+			//Look at camera to see if lined up
+			//CheckCamera()
+			//if close enough, drop off gear. else go closer.
 		} else {
 			// Default Auto goes here
-			std::cout << "Running default Autonomous" << std::endl;
-			myRobot->SetSafetyEnabled(false);
-			myRobot->Drive(-0.5, 0.0); // drive forwards half speed
-			frc::Wait(2.0);                // for 2 seconds
-			myRobot->Drive(0.0, 0.0);  // stop robot
+			myRobot->Drive(0,.25);
+			frc::Wait(1);
+			myRobot->Drive(0,0);
 		}
 	}
-
-	/*
-	 * Runs the motors with arcade steering.
-	 */
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
+			//if(winch is running){myRobot->NoDrive; *in class* void NoDrive(){this->speedGov = .001} else{ if(myRobot->NotDriving()){myRobot->GrantDrive();}}
 			// drive with tank style (use both sticks)
-			/**
-			if(doorsAreOpening){
-				myRobot->StopMotor();
-			}
-			//winch code
-			else if(stick->GetRawButton(0)){
-				myWinchMotor->Set(1);
-				if(pitch > 45){
-					myRobot->StopMotor();
-				}
-				else myRobot->TankDrive(stick, 1, 5);
-			}
-			else {
-				myRobot->TankDrive(stick, 1, 5);
-			}
-			**/
 			myRobot->TankDrive(stick, 5, 1);
 			myRobot->rDriveEncoder->GetRate();
 			if (stick->GetRawButton(1)){
@@ -407,15 +351,9 @@ public:
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
 				//stop intake && other junk like compressor
 			}
-			//myMotor.Set(1);
 			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
-			//frc::SmartDashboard::PutNumber("Current Pressure psi", myCompressor.GetCompressorCurrent());
-			//frc::SmartDashboard::PutNumber("Left Encoder Value", myRobot.leftDriveEncoder->GetRaw());
-			//frc::SmartDashboard::PutNumber("Right Encoder Value", myRobot.rightDriveEncoder->GetRaw());
-
 			// wait for a motor update time
 			frc::Wait(0.005);
-
 			//possibility to prevent waiting too long?
 			/**while(not IsNewDataAvailable()){
 				frc::Wait(0.001);
@@ -423,10 +361,6 @@ public:
 			**/
 		}
 	}
-
-	/*
-	 * Runs during test mode
-	 */
 	void Test() override {
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("encoderRaw", myRobot->rDriveEncoder->GetRaw());
