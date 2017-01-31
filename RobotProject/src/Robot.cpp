@@ -17,18 +17,28 @@
 #include <DoubleSolenoid.h>
 #include <PowerDistributionPanel.h>
 
+/* Welcome! This is Team 4187's 2017 FIRST Robotics Competition code. Go Roborams!
+ * All of our code is in one file right now. Lol, what the hell.
+ * We had to create our own Robot class (Screw inheriting!)
+ * 		We had a reason, okay. We wanted a 6 CIM drive base and didn't see a default one.
+ */
 
 class VPBSDrive {
 	private:
-		//driving
-		double lowMaxSpeed = 100.00; //guess
-		double highMaxSpeed = 340.00; //another guess
-		double curMaxSpeed = lowMaxSpeed; //a good default
-		double lowSpeedGov = 1; //literally minimal governing
+		//Driving related variables
+
+		double lowMaxSpeed = 100.00; //Low gear max-speed. Currently a guess.
+		double highMaxSpeed = 340.00; //High gear max-speed. Also a guess.
+		double curMaxSpeed = lowMaxSpeed; //Max speed of the current gear.
+		double lowSpeedGov = 1; //literally no governing
 		double sensitivity = 0.5; //default
 		frc::Spark* rSide [3];
 		frc::Spark* lSide [3];
-		//PID Driving
+
+
+
+		//PID variables - AKA black magic
+
 		double rCurSpeed = 0;
 		double rSetSpeed = rCurSpeed;
 		double rPrevSpeed = rCurSpeed;
@@ -42,30 +52,41 @@ class VPBSDrive {
 		double pK = 0.5;
 		double iK = 0.025;
 		double dK = 0;
-		//pneumatics
+
+
+
+		//Pneumatic related objects and stuff
+
 		frc::DoubleSolenoid* gearShifter;
-		frc::DoubleSolenoid::Value hGear = frc::DoubleSolenoid::Value::kReverse;
-		frc::DoubleSolenoid::Value lGear = frc::DoubleSolenoid::Value::kForward;
-		//encoder
-		double wheelDiameter = 4; //in inches
-		double eWRatio = 1.00/3.00; //wheel revolutions / encoder revolutions
-		double pPR = 48.00; //encoder settings of pulses per revolution
-		double dPerPulse = (wheelDiameter * 3.1415 * eWRatio)/pPR; //in inches
+		frc::DoubleSolenoid::Value highGear = frc::DoubleSolenoid::Value::kReverse;
+		frc::DoubleSolenoid::Value lowGear = frc::DoubleSolenoid::Value::kForward;
+
+
+		//Encoder related stuff
+
+		double dPerPulse = (4 /*<- Wheel Diameter*/ * 3.1415 * (1/3) /*<- Ratio*/)/48 /*<- Pulse Per Revolution*/;
 		double minRate = 1; //inches per second? to be considered moving
 
-		//other stuff
+
+
+		//Power Stuff
+
 		double curVolt;
 		double lowVolt;
 		frc::PowerDistributionPanel* pdp;
 		double minVolt = 9.0;
 
+
+
 	public:
-		//class scope variables
+		//Public Encoder stuffs
 		frc::Encoder* rDriveEncoder;
 		frc::Encoder* lDriveEncoder;
 
-		//init function
-		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) {
+		VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) { //TODO: Make these vars less shitty
+
+
+			//Initialize all the Sparks (in conveniently named arrays!)
 
 			rSide[0] = new frc::Spark(frm);
 			rSide[1] = new frc::Spark(crm);
@@ -78,31 +99,47 @@ class VPBSDrive {
 				lSide[i]->SetInverted(true);
 			}
 
-			//encoder name {port A, port B, reversed?, Accuracy/Precision}
+
+			//Initialize the encoders and set up their stuff
+
 			rDriveEncoder = new frc::Encoder(reA, reB, false, Encoder::EncodingType::k1X);
 			lDriveEncoder = new frc::Encoder(leA, leB, true, Encoder::EncodingType::k1X);
 			rDriveEncoder->SetDistancePerPulse(dPerPulse);
 			lDriveEncoder->SetDistancePerPulse(dPerPulse);
 			rDriveEncoder->SetMinRate(minRate);
 			lDriveEncoder->SetMinRate(minRate);
-			//Solenoids for shifting on single valve attached at PCM slot 1 (and 2)
 
+
+
+			//Solenoid for shifting on single valve attached at PCM slot 1 (and 2)
 			gearShifter = new frc::DoubleSolenoid(solA, solB );
-			gearShifter->Set(this->lGear);
-			//frc::Solenoid mySingleSolenoid { 1 };
+			gearShifter->Set(this->lowGear);
+
+
+
+			//Initialize the PDP :D
+			
 			pdp = new PowerDistributionPanel();
 			curVolt = pdp->GetVoltage();
 			lowVolt = curVolt;
 		}
+
+
 		virtual ~VPBSDrive() = default;
+
+
 		void DownShift(){
-			this->gearShifter->Set(this->lGear);
+			this->gearShifter->Set(this->lowGear);
 			this->curMaxSpeed = this->lowMaxSpeed;
 		}
+
+
 		void UpShift(){
-			this->gearShifter->Set(this->hGear);
+			this->gearShifter->Set(this->highGear);
 			this->curMaxSpeed = this->highMaxSpeed;
 		}
+
+
 		void PIDDrive(double rVal, double lVal){
 			//PID driving using speed control with rVal and lVal being the goal percentage of max speed
 			//PID loop variables
@@ -157,10 +194,14 @@ class VPBSDrive {
 			frc::SmartDashboard::PutNumber("lCor", lCor);
 			frc::SmartDashboard::PutNumber("curMaxSpeed", this->curMaxSpeed);
 		}
+
+
+		//Tank Driving! Now with PID control and Shifting all automagically inside!
 		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
-			//mimics normal tank drive but adds automatic shifting and PID control, may comment out auto shift and just manual
+			
 			double rVal = stick->GetRawAxis(rAxis);
 			double lVal = stick->GetRawAxis(lAxis);
+
 			//Null Zone for Joysticks
 			if (std::abs(rVal) < .05 ) {
 				rVal = 0.0;
@@ -168,16 +209,21 @@ class VPBSDrive {
 			if (std::abs(lVal) < .05 ) {
 				lVal = 0.0;
 			}
+
+			//Update the voltage variables
 			this->curVolt = this->pdp->GetVoltage();
 			if(this->curVolt < this->lowVolt){
 				this->lowVolt = this->curVolt;
 			}
-			//low voltage handling
+			frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
+
+			//"Brownout" to avoid the actual browning out lol
 			if(this->curVolt < this->minVolt){
 				rVal *= .5;
 				lVal *= .5;
 			}
-			frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
+
+		
 			/**
 			//auto shifting based on speed
 			if(this->lDriveEncoder->GetRate() > lowMaxSpeed && this->rDriveEncoder->GetRate() > lowMaxSpeed){
@@ -189,11 +235,14 @@ class VPBSDrive {
 				this->DownShift();
 			}
 			**/
-			//calls PID Drive with joystick values as arguments
+
 			this->PIDDrive(rVal, lVal);
 		}
+
+
+
 		void Drive (double mag, double curve){
-			//for auto
+			//Autonomous driving
 			double ratio;
 			double rVal;
 			double lVal;
@@ -214,6 +263,8 @@ class VPBSDrive {
 			//Call PID Drive w/ calculated rVal and lVal values as arguments for left and ride side set points
 			this->PIDDrive(rVal, lVal);
 		}
+
+
 		void DriveDis(double desiredDis, double epsilon){
 			//drive so many units +- epsilon forward (at the moment inches due to dPerPulse settings), negative should be backwards
 			double rStart = this->rDriveEncoder->GetDistance();
@@ -231,14 +282,20 @@ class VPBSDrive {
 			//once at desiredDis, stop robot
 			this->Drive(0,0);
 		}
+
+
+
+
 		void ToggleGearShifter(){
-			if(this->curMaxSpeed == this->lowMaxSpeed){
+			if(this->gearShifter->Get() == this->lowGear) {
 				this->UpShift();
-			}
-			if(this->curMaxSpeed == this->highMaxSpeed){
+			} else {
 				this->DownShift();
 			}
 		}
+
+
+
 		double GetCurVoltage(){
 			return this->curVolt;
 		}
