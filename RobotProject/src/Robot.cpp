@@ -142,27 +142,38 @@ class VPBSDrive {
 
 		void PIDDrive(double rVal, double lVal){
 			//PID driving using speed control with rVal and lVal being the goal percentage of max speed
+
 			//PID loop variables
 			double rPVal, rIVal, rDVal, rCor, rErr;
 			double lPVal, lIVal, lDVal, lCor, lErr;
 			this->rCurSpeed = this->rDriveEncoder->GetRate();
 			this->lCurSpeed = this->lDriveEncoder->GetRate();
+
+
 			//negated so positive is forward
 			rErr = -rVal - (this->rCurSpeed/this->curMaxSpeed);
 			lErr = -lVal - (this->lCurSpeed/this->curMaxSpeed);
-			//p
+
+
+			//Proportionate
 			rPVal = this->pK * rErr;
 			lPVal = this->pK * lErr;
-			//i
+
+
+			//Integral
 			this->rTErr += rErr;
 			this->lTErr += lErr;
 			rIVal = this->iK * this->rTErr;
 			lIVal = this->iK * this->lTErr;
-			//d
+
+
+			//Derivative
 			rDVal = this->dK * (rErr - this->rPrevErr);
 			lDVal = this->dK * (lErr - this->lPrevErr);
 			this->rPrevErr = rErr;
 			this->lPrevErr = lErr;
+
+
 			//total corrections
 			rCor = rPVal + rIVal + rDVal + (this->rCurSpeed/this->curMaxSpeed);
 			lCor = lPVal + lIVal + lDVal + (this->lCurSpeed/this->curMaxSpeed);
@@ -178,6 +189,8 @@ class VPBSDrive {
 				rVal = rSign * std::min(std::abs(rCor), lowSpeedGov);
 				lVal = lSign * std::min(std::abs(lCor), lowSpeedGov);
 			}
+
+
 			//set motors to Correction Value, negative to set back since _Val was negated earlier
 			for(int i = 0; i < 3; i++){
 				this->rSide[i]->Set(-rCor);
@@ -185,6 +198,8 @@ class VPBSDrive {
 			for(int i = 0; i < 3; i++){
 				this->lSide[i]->Set(-lCor);
 			}
+
+
 			//report a bunch of Driving Values
 			frc::SmartDashboard::PutNumber("rDis", this->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis", this->lDriveEncoder->GetDistance());
@@ -241,8 +256,8 @@ class VPBSDrive {
 
 
 
+		//Autonomous driving
 		void Drive (double mag, double curve){
-			//Autonomous driving
 			double ratio;
 			double rVal;
 			double lVal;
@@ -265,8 +280,8 @@ class VPBSDrive {
 		}
 
 
+		//drive so many units +- epsilon forward (at the moment inches due to dPerPulse settings), negative should be backwards
 		void DriveDis(double desiredDis, double epsilon){
-			//drive so many units +- epsilon forward (at the moment inches due to dPerPulse settings), negative should be backwards
 			double rStart = this->rDriveEncoder->GetDistance();
 			double curDis = rStart;
 			double goalDis = desiredDis + curDis;
@@ -285,7 +300,7 @@ class VPBSDrive {
 
 
 
-
+		//Basically switch gears lol
 		void ToggleGearShifter(){
 			if(this->gearShifter->Get() == this->lowGear) {
 				this->UpShift();
@@ -295,7 +310,7 @@ class VPBSDrive {
 		}
 
 
-
+		//Stuff we have to implement to make program happy
 		double GetCurVoltage(){
 			return this->curVolt;
 		}
@@ -341,13 +356,47 @@ class Robot: public frc::SampleRobot {
 	VPBSDrive* myRobot = new VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system,
 	frc::Joystick* stick = new frc::Joystick(0); // only joystick
 
-	//frc::SendableChooser<std::string> chooser;
-	const std::string autoNameDefault = "Default";
-	const std::string autoNameCustom = "myAuto";
+private:
 
-	//frc::Spark *motorPtr = &myMotor;
-	//frc::Encoder *encoderPtr = &myEncoder;
-	//frc::Compressor myCompressor {0};
+	//This is a seperate thread that handles the camera screen on the Dashboard.
+	static void CameraThread() {
+		cs::UsbCamera camera0 = CameraServer::GetInstance()->StartAutomaticCapture(); //Automatic capture starts at device 0 and increments every call
+		cs::UsbCamera camera1 = CameraServer::GetInstance()->StartAutomaticCapture();
+
+		camera0.SetResolution(640, 480);
+		camera1.SetResolution(640, 480);
+
+		cs::CvSink cvSink0 = CameraServer::GetInstance()->GetVideo(camera0);
+		cs::CvSink cvSink1 = CameraServer::GetInstance()->GetVideo(camera1);
+
+		cs::CvSource outputStreamStd = CameraServer::GetInstance()->PutVideo("Gray", 640, 480);
+
+		cv::Mat source; //Raw Image Mat
+		cv::Mat output; //Edited image after we make it black and white
+
+		frc::XboxController* controller = new frc::XboxController(0);
+		bool wasAPressed = false;
+		bool camera = true; //true for camera 0; false for camera 1
+
+		while (true) {
+			if (camera) {
+				cvSink0.GrabFrame(source);
+			} else {
+				cvSink1.GrabFrame(source);
+			}
+
+			cvtColor(source, output, cv::COLOR_BGR2GRAY);
+			outputStreamStd.PutFrame(output);
+
+			bool isADown = controller->GetAButton();
+
+			if (!wasAPressed and isADown) {
+				camera = !camera;
+			}
+
+			wasAPressed = isADown;
+		}
+	}
 
 public:
 	Robot() {
@@ -356,10 +405,9 @@ public:
 	}
 
 	void RobotInit() {
-		//chooser.AddDefault(autoNameDefault, autoNameDefault);
-		//chooser.AddObject(autoNameCustom, autoNameCustom);
-		//frc::SmartDashboard::PutData("Auto Modes", &chooser);
 		std::cout<<"this is std::out"<<std::endl;
+		std::thread cameraThread(CameraThread);
+		cameraThread.detach();
 		myRobot->DownShift();
 	}
 
@@ -375,22 +423,9 @@ public:
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
 	void Autonomous() {
-		//auto autoSelected = chooser.GetSelected();
-		std::string autoSelected = frc::SmartDashboard::GetString("Auto Selector", autoNameDefault);
-		std::cout << "Auto selected: " << autoSelected << std::endl;
-
-		if (autoSelected == autoNameCustom) {
-			//drive forward 15 units (inches), +- 1 inches
-			myRobot->DriveDis(15,1);
-			//Look at camera to see if lined up
-			//CheckCamera()
-			//if close enough, drop off gear. else go closer.
-		} else {
-			// Default Auto goes here
-			myRobot->Drive(0,.25);
-			frc::Wait(1);
-			myRobot->Drive(0,0);
-		}
+		myRobot->Drive(0,.25);
+		frc::Wait(1);
+		myRobot->Drive(0,0);
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
@@ -411,11 +446,6 @@ public:
 			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
 			// wait for a motor update time
 			frc::Wait(0.005);
-			//possibility to prevent waiting too long?
-			/**while(not IsNewDataAvailable()){
-				frc::Wait(0.001);
-			}
-			**/
 		}
 	}
 	void Test() override {
