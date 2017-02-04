@@ -3,7 +3,7 @@
 #include <string>
 #include <math.h>
 
-#include <Joystick.h>
+#include <XboxController.h>
 #include <SampleRobot.h>
 #include <SmartDashboard/SendableChooser.h>
 #include <SmartDashboard/SmartDashboard.h>
@@ -212,12 +212,12 @@ class VPBSDrive {
 
 
 		//Tank Driving! Now with PID control and Shifting all automagically inside!
-		void TankDrive (frc::Joystick* stick, int rAxis, int lAxis){
+		void TankDrive (frc::XboxController* controller){
 			
-			double rVal = stick->GetRawAxis(rAxis);
-			double lVal = stick->GetRawAxis(lAxis);
+			double rVal = controller->GetY(kRightHand);
+			double lVal = controller->GetY(kLeftHand);
 
-			//Null Zone for Joysticks
+			//Null Zone 
 			if (std::abs(rVal) < .05 ) {
 				rVal = 0.0;
 			}
@@ -353,8 +353,8 @@ class VPBSDrive {
 };
 
 class Robot: public frc::SampleRobot {
-	VPBSDrive* myRobot = new VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system,
-	frc::Joystick* stick = new frc::Joystick(0); // only joystick
+	VPBSDrive* myRobot = new VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system
+	frc::XboxController* controller = new frc::XboxController(0);
 
 private:
 
@@ -431,13 +431,12 @@ public:
 		myRobot->SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
 			//if(winch is running){myRobot->NoDrive; *in class* void NoDrive(){this->speedGov = .001} else{ if(myRobot->NotDriving()){myRobot->GrantDrive();}}
-			// drive with tank style (use both sticks)
-			myRobot->TankDrive(stick, 5, 1);
+			myRobot->TankDrive(controller);
 			myRobot->rDriveEncoder->GetRate();
-			if (stick->GetRawButton(1)){
+			if (controller->GetPOV() == 0){
 				myRobot->UpShift();
 			}
-			if (stick->GetRawButton(2)) {
+			if (controller->GetPOV() == 180) {
 				myRobot->DownShift();
 			}
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
