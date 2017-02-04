@@ -33,16 +33,16 @@ private:
 
 	//This is a seperate thread that handles the camera screen on the Dashboard.
 	static void CameraThread() {
-		cs::UsbCamera camera0 = CameraServer::GetInstance()->StartAutomaticCapture(); //Automatic capture starts at device 0 and increments every call
-		cs::UsbCamera camera1 = CameraServer::GetInstance()->StartAutomaticCapture();
+		cs::UsbCamera camera0 = cs::UsbCamera("USB Camera 0", 0);
+		cs::UsbCamera camera1 = cs::UsbCamera("USB Camera 1", 1);
 
-		camera0.SetResolution(640, 480);
-		camera1.SetResolution(640, 480);
+		camera0.SetResolution(320, 240);
+		camera1.SetResolution(320, 240);
 
 		cs::CvSink cvSink0 = CameraServer::GetInstance()->GetVideo(camera0);
 		cs::CvSink cvSink1 = CameraServer::GetInstance()->GetVideo(camera1);
 
-		cs::CvSource outputStreamStd = CameraServer::GetInstance()->PutVideo("Gray", 640, 480);
+		cs::CvSource outputStreamStd = CameraServer::GetInstance()->PutVideo("2CamFeed", 320, 240);
 
 		cv::Mat source; //Raw Image Mat
 		cv::Mat output; //Edited image after we make it black and white
@@ -58,7 +58,8 @@ private:
 				cvSink1.GrabFrame(source);
 			}
 
-			cvtColor(source, output, cv::COLOR_BGR2GRAY);
+			//cvtColor(source, output, cv::COLOR_BGR2GRAY);
+			output = source;
 			outputStreamStd.PutFrame(output);
 
 			bool isADown = controller->GetAButton();
