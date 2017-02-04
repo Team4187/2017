@@ -17,6 +17,11 @@
 #include <DoubleSolenoid.h>
 #include <PowerDistributionPanel.h>
 
+#include <CameraServer.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+#include <cscore_oo.h>
+
 /* Welcome! This is Team 4187's 2017 FIRST Robotics Competition code. Go Roborams!
  * All of our code is in one file right now. Lol, what the hell.
  * We had to create our own Robot class (Screw inheriting!)
@@ -214,8 +219,8 @@ class VPBSDrive {
 		//Tank Driving! Now with PID control and Shifting all automagically inside!
 		void TankDrive (frc::XboxController* controller){
 			
-			double rVal = controller->GetY(kRightHand);
-			double lVal = controller->GetY(kLeftHand);
+			double rVal = controller->GetY(GenericHID::kRightHand);
+			double lVal = controller->GetY(GenericHID::kLeftHand);
 
 			//Null Zone 
 			if (std::abs(rVal) < .05 ) {
