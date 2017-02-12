@@ -14,6 +14,7 @@
 #include <PowerDistributionPanel.h>
 #include <SmartDashboard/SmartDashboard.h>
 #include <XboxController.h>
+#include <ADXRS450_Gyro.h>
 
 class VPBSDrive {
 private:
@@ -65,9 +66,10 @@ private:
 	frc::PowerDistributionPanel* pdp;
 	double minVolt = 9.0;
 public:
-	//Public Encoder stuffs
+	//Public Encoder & Gyro stuffs
 	frc::Encoder* rDriveEncoder;
 	frc::Encoder* lDriveEncoder;
+	frc::ADXRS450_Gyro* gyro;
 
 	VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB);
 
@@ -91,7 +93,7 @@ public:
 	void Drive (double mag, double curve);
 
 	void DriveDis(double desiredDis, double epsilon);
-
+	void Turn(double desiredTurn, double epsilon);
 
 	//Basically switch gears lol
 	void ToggleGearShifter();

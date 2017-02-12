@@ -19,6 +19,7 @@
 #include <PowerDistributionPanel.h>
 #include <SmartDashboard/SmartDashboard.h>
 #include <XboxController.h>
+#include <ADXRS450_Gyro.h>
 
 VPBSDrive::VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) { //TODO: Make these vars less shitty
 
@@ -46,7 +47,9 @@ VPBSDrive::VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int 
 	rDriveEncoder->SetMinRate(minRate);
 	lDriveEncoder->SetMinRate(minRate);
 
-
+	//Gyro init
+	gyro = new frc::ADXRS450_Gyro();
+	gyro->Calibrate();
 
 	//Solenoid for shifting on single valve attached at PCM slot 1 (and 2)
 	gearShifter = new frc::DoubleSolenoid(solA, solB );
@@ -230,6 +233,21 @@ void VPBSDrive::DriveDis(double desiredDis, double epsilon){
 	this->Drive(0,0);
 }
 
+//Turn so many units +- epsilon (units in inches? whatever gyro spits out), negative should be counter clockwise
+void VPBSDrive::Turn(double desiredTurn, double epsilon){
+	double start = this->gyro->GetAngle();
+	double cur = start;
+	double goal = desiredTurn + cur;
+	double lowGoal = goal - epsilon;
+	double highGoal = goal + epsilon;
+	while(cur < lowGoal or cur > highGoal){
+			//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances.
+			double err = (cur - goal)/std::abs(desiredTurn);
+			this->PIDDrive(-err, err); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
+			//this->Drive(0,err); //try this if that ^ doesn't work. This won't turn in place though
+			cur = this->gyro->GetAngle();
+	}
+}
 
 
 //Basically switch gears lol
