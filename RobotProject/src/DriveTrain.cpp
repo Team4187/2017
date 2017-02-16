@@ -153,10 +153,10 @@ void VPBSDrive::TankDrive (frc::XboxController* controller){
 	double lVal = controller->GetY(GenericHID::kLeftHand);
 
 	//Null Zone
-	if (std::abs(rVal) < .05 ) {
+	if (std::abs(rVal) < .1 ) {
 		rVal = 0.0;
 	}
-	if (std::abs(lVal) < .05 ) {
+	if (std::abs(lVal) < .1 ) {
 		lVal = 0.0;
 	}
 

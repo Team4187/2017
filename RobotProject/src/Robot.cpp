@@ -26,8 +26,10 @@
 
 
 class Robot: public frc::SampleRobot {
-	VPBSDrive* myRobot = new VPBSDrive(1,3,5,0,2,4,0,1,2,3,1,2); // robot drive system
+	VPBSDrive* myRobot = new VPBSDrive(3,4,5,0,1,2,2,3,0,1,4,5); // robot drive system
 	frc::XboxController* controller = new frc::XboxController(0);
+	frc::Spark* winch1 = new frc::Spark(9);
+	frc::Spark* winch2 = new frc::Spark(8);
 
 private:
 
@@ -123,10 +125,20 @@ public:
 	}
 	void Test() override {
 		while(IsEnabled()){
-			frc::SmartDashboard::PutNumber("encoderRaw", myRobot->rDriveEncoder->GetRaw());
-			frc::SmartDashboard::PutNumber("encoderDis", myRobot->rDriveEncoder->GetDistance());
-			frc::SmartDashboard::PutNumber("encoderRate", myRobot->rDriveEncoder->GetRate());
-			std::cout<<myRobot->rDriveEncoder->GetRate()<<std::endl;
+//			if(controller->GetAButton()){
+//				winch1->Set(.5);
+//				winch2->Set(.5);
+//			}
+//			if(controller->GetBButton()){
+//				winch1->Set(-.5);
+//				winch2->Set(-.5);
+//			}
+			//winch1->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
+			//winch2->Set(controller->GetY(frc::GenericHID::JoystickHand::kRightHand));
+			//myRobot->DriveDis(10,2);
+			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
+			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
+
 			frc::Wait(.5);
 		}
 	}

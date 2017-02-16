@@ -41,7 +41,7 @@ private:
 	double lTErr = 0;
 	double lPrevErr = 0;
 	double pK = 0.5;
-	double iK = 0.025;
+	double iK = 0;
 	double dK = 0;
 
 
