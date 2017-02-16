@@ -7,13 +7,12 @@
 #include <SampleRobot.h>
 #include <RobotDrive.h>
 #include <Timer.h>
-#include <PIDController.h>
 #include <Compressor.h>
-#include <Solenoid.h>
 #include <CameraServer.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
 #include <cscore_oo.h>
+#include <Servo.h>
 
 
 
@@ -28,8 +27,22 @@
 class Robot: public frc::SampleRobot {
 	VPBSDrive* myRobot = new VPBSDrive(3,4,5,0,1,2,2,3,0,1,4,5); // robot drive system
 	frc::XboxController* controller = new frc::XboxController(0);
-	frc::Spark* winch1 = new frc::Spark(9);
-	frc::Spark* winch2 = new frc::Spark(8);
+	frc::Compressor* compressor = new frc::Compressor();
+	frc::DoubleSolenoid* gearDoor = new frc::DoubleSolenoid(2,6); //2 and 6 on the PCM
+	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(3,7);
+	frc::Servo* clawServo = new frc::Servo(10);
+	frc::Servo* ballGate = new frc::Servo(11);
+	frc::Spark* winch0 = new frc::Spark(6);
+	frc::Spark* winch1 = new frc::Spark(7);
+	frc::Spark* intake = new frc::Spark(8);
+	frc::Spark* conveyor = new frc::Spark(9);
+	double rightTriggerValue = 0;
+	bool intakeRunning = false;
+	bool conveyorRunning = false;
+	bool compressorRunning = false;
+	bool compressorButtons = false;
+	bool leftBumperButton = false;
+	bool rightBumperButton = false;
 
 private:
 
@@ -85,6 +98,12 @@ public:
 		std::thread cameraThread(CameraThread);
 		cameraThread.detach();
 		myRobot->DownShift();
+		intake->Set(0);
+		conveyor->Set(0);
+		winch0->Set(0);
+		winch1->Set(0);
+		clawServo->Set(0);
+		ballGate->Set(0);
 	}
 
 	/*
@@ -99,25 +118,101 @@ public:
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
 	void Autonomous() {
-		myRobot->Drive(0,.25);
+		myRobot->Drive(0,0.25);
 		frc::Wait(1);
 		myRobot->Drive(0,0);
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
-			//if(winch is running){myRobot->NoDrive; *in class* void NoDrive(){this->speedGov = .001} else{ if(myRobot->NotDriving()){myRobot->GrantDrive();}}
+			//driving
 			myRobot->TankDrive(controller);
-			myRobot->rDriveEncoder->GetRate();
-			if (controller->GetPOV() == 0){
+			//manual shifting
+			/*if (controller->GetPOV() == 0){
 				myRobot->UpShift();
 			}
 			if (controller->GetPOV() == 180) {
 				myRobot->DownShift();
+			} the other thing uses POV so just going to toggle with B or stick buttons until better solution arises*/
+			if(controller->GetBButton()){
+				myRobot->ToggleGearShifter();
 			}
+			//power management
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
-				//stop intake && other junk like compressor
+				intake->Set(0);
+				conveyor->Set(0);
+				compressor->Stop();
 			}
+			//gear door
+			if(controller->GetXButton()){
+				gearDoor->Set(frc::DoubleSolenoid::Value::kForward);
+			}
+			if(controller->GetYButton()){
+				gearDoor->Set(frc::DoubleSolenoid::Value::kReverse);
+			}
+			//winch
+			rightTriggerValue = controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kRightHand);
+			winch0->Set(rightTriggerValue);
+			winch1->Set(rightTriggerValue);
+			//claw
+			//moves claw in and out
+			if(controller->GetPOV(0)){
+					clawSol->Set(frc::DoubleSolenoid::Value::kForward);
+			}
+			if(controller->GetPOV(180)){
+					clawSol->Set(frc::DoubleSolenoid::Value::kReverse);
+			}
+
+			//opens and closes claw
+			if(controller->GetPOV(90)){
+					clawServo->Set(30);
+			}
+
+			if(controller->GetPOV(270)){
+					clawServo->Set(0);
+			}
+			//intake
+			if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
+				if (intakeRunning) {
+						intake->Set(0);
+						intakeRunning = false;
+						conveyor->Set(0);
+				}
+				else {
+						intake->Set(0.5);
+						intakeRunning = true;
+						conveyor->Set(1.0);
+				}
+			}
+			leftBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand);
+			//conveyor "low goal scoring"
+			if (!rightBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kRightHand)) {
+				if (conveyorRunning) {
+						conveyorRunning = false;
+						conveyor->Set(0);
+						ballGate->Set(0); //straight up
+				}
+				else {
+						conveyorRunning = true;
+						conveyor->Set(1.0);
+						ballGate->Set(20); //flat
+				}
+				intake->Set(0); //turn off intake if
+			}
+			rightBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kRightHand);
+			//compressor toggle
+			if (!compressorButtons && (controller->GetStartButton() or controller->GetBackButton())) {
+				if (compressorRunning) {
+						compressorRunning = false;
+						compressor->Stop();
+				}
+				else {
+						compressorRunning = true;
+						compressor->Start();
+				}
+				intake->Set(0); //turn off intake if
+			}
+			compressorButtons = (controller->GetStartButton() or controller->GetBackButton());
 			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
 			// wait for a motor update time
 			frc::Wait(0.005);
@@ -125,17 +220,6 @@ public:
 	}
 	void Test() override {
 		while(IsEnabled()){
-//			if(controller->GetAButton()){
-//				winch1->Set(.5);
-//				winch2->Set(.5);
-//			}
-//			if(controller->GetBButton()){
-//				winch1->Set(-.5);
-//				winch2->Set(-.5);
-//			}
-			//winch1->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
-			//winch2->Set(controller->GetY(frc::GenericHID::JoystickHand::kRightHand));
-			//myRobot->DriveDis(10,2);
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
 
