@@ -15,7 +15,6 @@
 #include <Servo.h>
 
 
-
 #include <DriveTrain.h>
 /* Welcome! This is Team 4187's 2017 FIRST Robotics Competition code. Go Roborams!
  * All of our code is in one file right now. Lol, what the hell.
@@ -30,8 +29,8 @@ class Robot: public frc::SampleRobot {
 	frc::Compressor* compressor = new frc::Compressor();
 	frc::DoubleSolenoid* gearDoor = new frc::DoubleSolenoid(2,6); //2 and 6 on the PCM
 	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(3,7);
-	frc::Servo* clawServo = new frc::Servo(10);
-	frc::Servo* ballGate = new frc::Servo(11);
+	frc::Servo* clawServo = new frc::Servo(11);
+	frc::Servo* ballGate = new frc::Servo(10);
 	frc::Spark* winch0 = new frc::Spark(6);
 	frc::Spark* winch1 = new frc::Spark(7);
 	frc::Spark* intake = new frc::Spark(8);
@@ -39,10 +38,12 @@ class Robot: public frc::SampleRobot {
 	double rightTriggerValue = 0;
 	bool intakeRunning = false;
 	bool conveyorRunning = false;
-	bool compressorRunning = false;
+	bool compressorRunning = true;
 	bool compressorButtons = false;
 	bool leftBumperButton = false;
 	bool rightBumperButton = false;
+	frc::DoubleSolenoid::Value gearOpen = frc::DoubleSolenoid::Value::kForward;
+	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
 
 private:
 
@@ -103,7 +104,8 @@ public:
 		winch0->Set(0);
 		winch1->Set(0);
 		clawServo->Set(0);
-		ballGate->Set(0);
+		ballGate->Set(190);
+		compressor->Start();
 	}
 
 	/*
@@ -133,9 +135,13 @@ public:
 			}
 			if (controller->GetPOV() == 180) {
 				myRobot->DownShift();
-			} the other thing uses POV so just going to toggle with B or stick buttons until better solution arises*/
+			} the other thing uses POV so just going to toggle with B or stick buttons until better solution arises
+			*/
+			if(controller->GetAButton()){
+				myRobot->DownShift();
+			}
 			if(controller->GetBButton()){
-				myRobot->ToggleGearShifter();
+				myRobot->UpShift();
 			}
 			//power management
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
@@ -145,10 +151,10 @@ public:
 			}
 			//gear door
 			if(controller->GetXButton()){
-				gearDoor->Set(frc::DoubleSolenoid::Value::kForward);
+				gearDoor->Set(gearClose);
 			}
 			if(controller->GetYButton()){
-				gearDoor->Set(frc::DoubleSolenoid::Value::kReverse);
+				gearDoor->Set(gearOpen);
 			}
 			//winch
 			rightTriggerValue = controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kRightHand);
@@ -156,19 +162,19 @@ public:
 			winch1->Set(rightTriggerValue);
 			//claw
 			//moves claw in and out
-			if(controller->GetPOV(0)){
+			if(controller->GetPOV() == 0){
 					clawSol->Set(frc::DoubleSolenoid::Value::kForward);
 			}
-			if(controller->GetPOV(180)){
+			if(controller->GetPOV() == 180){
 					clawSol->Set(frc::DoubleSolenoid::Value::kReverse);
 			}
 
 			//opens and closes claw
-			if(controller->GetPOV(90)){
+			if(controller->GetPOV() == 90){
 					clawServo->Set(30);
 			}
 
-			if(controller->GetPOV(270)){
+			if(controller->GetPOV() == 270){
 					clawServo->Set(0);
 			}
 			//intake
@@ -190,12 +196,12 @@ public:
 				if (conveyorRunning) {
 						conveyorRunning = false;
 						conveyor->Set(0);
-						ballGate->Set(0); //straight up
+						ballGate->Set(200); //straight up
 				}
 				else {
 						conveyorRunning = true;
 						conveyor->Set(1.0);
-						ballGate->Set(20); //flat
+						ballGate->Set(100); //flat
 				}
 				intake->Set(0); //turn off intake if
 			}
@@ -222,7 +228,14 @@ public:
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-
+			conveyor->Set(controller->GetX(frc::GenericHID::JoystickHand::kLeftHand));
+			if(controller->GetAButton()){
+				clawSol->Set(frc::DoubleSolenoid::Value::kReverse);
+			}
+			if(controller->GetBButton()){
+				clawSol->Set(frc::DoubleSolenoid::Value::kForward);
+			}
+			//compressor->Stop();
 			frc::Wait(.5);
 		}
 	}
