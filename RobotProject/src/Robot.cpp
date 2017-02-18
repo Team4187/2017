@@ -28,7 +28,7 @@ class Robot: public frc::SampleRobot {
 	frc::XboxController* controller = new frc::XboxController(0);
 	frc::Compressor* compressor = new frc::Compressor();
 	frc::DoubleSolenoid* gearDoor = new frc::DoubleSolenoid(2,6); //2 and 6 on the PCM
-	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(3,7);
+	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(7, 3);
 	frc::Servo* clawServo = new frc::Servo(11);
 	frc::Servo* ballGate = new frc::Servo(10);
 	frc::Spark* winch0 = new frc::Spark(6);
@@ -42,9 +42,15 @@ class Robot: public frc::SampleRobot {
 	bool compressorButtons = false;
 	bool leftBumperButton = false;
 	bool rightBumperButton = false;
+	bool leftTriggerDown = false;
 	frc::DoubleSolenoid::Value gearOpen = frc::DoubleSolenoid::Value::kForward;
 	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
-
+	frc::DoubleSolenoid::Value clawIn = frc::DoubleSolenoid::Value::kReverse;
+	frc::DoubleSolenoid::Value clawOut = frc::DoubleSolenoid::Value::kForward;
+	double ballGateUp = 50;
+	double ballGateDown = 0;
+	double clawOpen = 30;
+	double clawShut = 0;
 private:
 
 	//This is a seperate thread that handles the camera screen on the Dashboard.
@@ -103,9 +109,11 @@ public:
 		conveyor->Set(0);
 		winch0->Set(0);
 		winch1->Set(0);
-		clawServo->Set(0);
-		ballGate->Set(190);
-		compressor->Start();
+		clawServo->Set(clawShut);
+		ballGate->Set(ballGateUp);
+		compressor->Stop();
+		clawSol->Set(clawIn);
+		gearDoor->Set(gearClose);
 	}
 
 	/*
@@ -120,8 +128,8 @@ public:
 	 * SendableChooser make sure to add them to the chooser code above as well.
 	 */
 	void Autonomous() {
-		myRobot->Drive(0,0.25);
-		frc::Wait(1);
+		myRobot->SetSafetyEnabled(false);
+		myRobot->DriveDis(10,2);
 		myRobot->Drive(0,0);
 	}
 	void OperatorControl() override {
@@ -136,13 +144,17 @@ public:
 			if (controller->GetPOV() == 180) {
 				myRobot->DownShift();
 			} the other thing uses POV so just going to toggle with B or stick buttons until better solution arises
-			*/
+			*//*
 			if(controller->GetAButton()){
 				myRobot->DownShift();
 			}
 			if(controller->GetBButton()){
 				myRobot->UpShift();
+			}*/
+			if(!leftTriggerDown and (controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kLeftHand) > .3)){
+				myRobot->ToggleGearShifter();
 			}
+			leftTriggerDown = (controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kLeftHand));
 			//power management
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
 				intake->Set(0);
@@ -163,19 +175,19 @@ public:
 			//claw
 			//moves claw in and out
 			if(controller->GetPOV() == 0){
-					clawSol->Set(frc::DoubleSolenoid::Value::kForward);
+					clawSol->Set(clawOut);
 			}
 			if(controller->GetPOV() == 180){
-					clawSol->Set(frc::DoubleSolenoid::Value::kReverse);
+					clawSol->Set(clawIn);
 			}
 
 			//opens and closes claw
 			if(controller->GetPOV() == 90){
-					clawServo->Set(30);
+					clawServo->Set(clawOpen);
 			}
 
 			if(controller->GetPOV() == 270){
-					clawServo->Set(0);
+					clawServo->Set(clawShut);
 			}
 			//intake
 			if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
@@ -185,9 +197,9 @@ public:
 						conveyor->Set(0);
 				}
 				else {
-						intake->Set(0.5);
+						intake->Set(-0.5);
 						intakeRunning = true;
-						conveyor->Set(1.0);
+						conveyor->Set(-1.0);
 				}
 			}
 			leftBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand);
@@ -196,12 +208,12 @@ public:
 				if (conveyorRunning) {
 						conveyorRunning = false;
 						conveyor->Set(0);
-						ballGate->Set(200); //straight up
+						ballGate->Set(ballGateUp); //straight up
 				}
 				else {
 						conveyorRunning = true;
-						conveyor->Set(1.0);
-						ballGate->Set(100); //flat
+						conveyor->Set(-1.0);
+						ballGate->Set(ballGateDown); //flat
 				}
 				intake->Set(0); //turn off intake if
 			}
@@ -228,13 +240,7 @@ public:
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-			conveyor->Set(controller->GetX(frc::GenericHID::JoystickHand::kLeftHand));
-			if(controller->GetAButton()){
-				clawSol->Set(frc::DoubleSolenoid::Value::kReverse);
-			}
-			if(controller->GetBButton()){
-				clawSol->Set(frc::DoubleSolenoid::Value::kForward);
-			}
+
 			//compressor->Stop();
 			frc::Wait(.5);
 		}
