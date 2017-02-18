@@ -7,7 +7,7 @@
 
 #ifndef SRC_DRIVETRAIN_H_
 #define SRC_DRIVETRAIN_H_
-
+#include <RobotBase.h>
 #include <Encoder.h>
 #include <Spark.h>
 #include <DoubleSolenoid.h>
@@ -56,7 +56,8 @@ private:
 
 	//Encoder related stuff
 
-	double dPerPulse = (4 /*<- Wheel Diameter*/ * 3.1415 * (1/3) /*<- Ratio*/)/48 /*<- Pulse Per Revolution*/;
+	//double dPerPulse = (4 /*<- Wheel Diameter*/ * 3.1415 * (1/3) /*<- Ratio*/)/48 /*<- Pulse Per Revolution*/;
+	double dPerPulse = (4 * 3.1415)/(144);
 	double minRate = 1; //inches per second? to be considered moving
 
 

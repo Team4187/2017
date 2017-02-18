@@ -29,6 +29,7 @@ class Robot: public frc::SampleRobot {
 	frc::Compressor* compressor = new frc::Compressor();
 	frc::DoubleSolenoid* gearDoor = new frc::DoubleSolenoid(2,6); //2 and 6 on the PCM
 	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(7, 3);
+	//frc::Spark* clawServo = new frc::Spark(11);
 	frc::Servo* clawServo = new frc::Servo(11);
 	frc::Servo* ballGate = new frc::Servo(10);
 	frc::Spark* winch0 = new frc::Spark(6);
@@ -47,7 +48,7 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawIn = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawOut = frc::DoubleSolenoid::Value::kForward;
-	double ballGateUp = 50;
+	double ballGateUp = 100;
 	double ballGateDown = 0;
 	double clawOpen = 30;
 	double clawShut = 0;
@@ -109,8 +110,8 @@ public:
 		conveyor->Set(0);
 		winch0->Set(0);
 		winch1->Set(0);
-		clawServo->Set(clawShut);
-		ballGate->Set(ballGateUp);
+		//clawServo->SetAngle(clawShut);
+		//ballGate->Set(ballGateUp);
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
@@ -133,9 +134,13 @@ public:
 		frc::Wait(3);
 		myRobot->DriveDis(-10,2);
 		frc::Wait(3);
-		myRobot->Turn(45,5);
+		myRobot->DriveDis(24,2);
 		frc::Wait(3);
-		myRobot->Turn(-45,5);
+		myRobot->DriveDis(-24,2);
+		frc::Wait(3);
+		myRobot->Turn(45,10);
+		frc::Wait(3);
+		myRobot->Turn(-45,10);
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
@@ -188,11 +193,11 @@ public:
 
 			//opens and closes claw
 			if(controller->GetPOV() == 90){
-					clawServo->Set(clawOpen);
+					//clawServo->SetAngle(clawOpen);
 			}
 
 			if(controller->GetPOV() == 270){
-					clawServo->Set(clawShut);
+					//clawServo->SetAngle(clawShut);
 			}
 			//intake
 			if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
@@ -202,7 +207,7 @@ public:
 						conveyor->Set(0);
 				}
 				else {
-						intake->Set(-0.5);
+						intake->Set(-0.6);
 						intakeRunning = true;
 						conveyor->Set(-1.0);
 				}
@@ -245,15 +250,7 @@ public:
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-			myRobot->PureTankDrive(controller->GetY(frc::GenericHID::JoystickHand::kRightHand),controller->GetY(frc::GenericHID::JoystickHand::kLeftHand), true);
-			intake->Set(controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kRightHand));
-			if(controller->GetPOV() == 0){
-				clawSol->Set(clawOut);
-			}
-			if(controller->GetPOV() == 180){
-				clawSol->Set(clawIn);
-			}
-			//compressor->Stop();
+			std::cout<<myRobot->gyro->GetAngle()<<std::endl;
 			frc::Wait(.005);
 		}
 	}

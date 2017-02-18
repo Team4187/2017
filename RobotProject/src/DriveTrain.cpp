@@ -12,7 +12,7 @@
 
 
 #include <DriveTrain.h>
-
+#include <RobotBase.h>
 #include <Encoder.h>
 #include <Spark.h>
 #include <DoubleSolenoid.h>
@@ -44,11 +44,12 @@ VPBSDrive::VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int 
 	lDriveEncoder = new frc::Encoder(leA, leB, true, Encoder::EncodingType::k1X);
 	rDriveEncoder->SetDistancePerPulse(dPerPulse);
 	lDriveEncoder->SetDistancePerPulse(dPerPulse);
-	rDriveEncoder->SetMinRate(minRate);
-	lDriveEncoder->SetMinRate(minRate);
+	//rDriveEncoder->SetMinRate(minRate);
+	//lDriveEncoder->SetMinRate(minRate);
 
 	//Gyro init
 	gyro = new frc::ADXRS450_Gyro();
+	gyro->Reset();
 	gyro->Calibrate();
 
 	//Solenoid for shifting on single valve attached at PCM slot 1 (and 2)
@@ -249,12 +250,12 @@ void VPBSDrive::Turn(double desiredTurn, double epsilon){
 	double goal = desiredTurn + cur;
 	double lowGoal = goal - epsilon;
 	double highGoal = goal + epsilon;
-	while(cur < lowGoal or cur > highGoal){
-			//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances.
-			double err = (cur - goal)/std::abs(desiredTurn);
-			this->PIDDrive(-err, err); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
-			//this->Drive(0,err); //try this if that ^ doesn't work. This won't turn in place though
-			cur = this->gyro->GetAngle();
+	while(cur < lowGoal or cur > highGoal) {
+		//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances.
+		double err = (cur - goal)/std::abs(desiredTurn);
+		this->PIDDrive(-err, err); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
+		//this->Drive(0,err); //try this if that ^ doesn't work. This won't turn in place though
+		cur = this->gyro->GetAngle();
 	}
 	//once to desired angle stop motors
 	this->Drive(0,0);
