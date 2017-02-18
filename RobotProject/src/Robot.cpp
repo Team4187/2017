@@ -130,7 +130,12 @@ public:
 	void Autonomous() {
 		myRobot->SetSafetyEnabled(false);
 		myRobot->DriveDis(10,2);
-		myRobot->Drive(0,0);
+		frc::Wait(3);
+		myRobot->DriveDis(-10,2);
+		frc::Wait(3);
+		myRobot->Turn(45,5);
+		frc::Wait(3);
+		myRobot->Turn(-45,5);
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
@@ -240,9 +245,16 @@ public:
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-
+			myRobot->PureTankDrive(controller->GetY(frc::GenericHID::JoystickHand::kRightHand),controller->GetY(frc::GenericHID::JoystickHand::kLeftHand), true);
+			intake->Set(controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kRightHand));
+			if(controller->GetPOV() == 0){
+				clawSol->Set(clawOut);
+			}
+			if(controller->GetPOV() == 180){
+				clawSol->Set(clawIn);
+			}
 			//compressor->Stop();
-			frc::Wait(.5);
+			frc::Wait(.005);
 		}
 	}
 };

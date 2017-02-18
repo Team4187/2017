@@ -75,7 +75,18 @@ void VPBSDrive::UpShift(){
 	this->curMaxSpeed = this->highMaxSpeed;
 }
 
-
+void VPBSDrive::PureTankDrive(double rVal, double lVal, bool nullZone){
+	if(std::abs(rVal) < .1){
+		rVal = 0;
+	}
+	if(std::abs(lVal) < .1){
+		lVal = 0;
+	}
+	for(int i = 0; i < 3; i++){
+		this->rSide[i]->Set(rVal);
+		this->lSide[i]->Set(lVal);
+	}
+}
 void VPBSDrive::PIDDrive(double rVal, double lVal){
 	//PID driving using speed control with rVal and lVal being the goal percentage of max speed
 
@@ -129,8 +140,6 @@ void VPBSDrive::PIDDrive(double rVal, double lVal){
 	//set motors to Correction Value, negative to set back since _Val was negated earlier
 	for(int i = 0; i < 3; i++){
 		this->rSide[i]->Set(-rCor);
-	}
-	for(int i = 0; i < 3; i++){
 		this->lSide[i]->Set(-lCor);
 	}
 
@@ -247,6 +256,8 @@ void VPBSDrive::Turn(double desiredTurn, double epsilon){
 			//this->Drive(0,err); //try this if that ^ doesn't work. This won't turn in place though
 			cur = this->gyro->GetAngle();
 	}
+	//once to desired angle stop motors
+	this->Drive(0,0);
 }
 
 

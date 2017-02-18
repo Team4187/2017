@@ -83,7 +83,7 @@ public:
 
 	void UpShift();
 
-
+	void PureTankDrive(double rVal, double lVal, bool nullZone = true);
 	void PIDDrive(double rVal, double lVal);
 
 	//Tank Driving! Now with PID control and Shifting all automagically inside!
