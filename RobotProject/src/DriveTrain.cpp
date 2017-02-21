@@ -236,9 +236,8 @@ void VPBSDrive::DriveDis(double desiredDis, double epsilon){
 	double highGoal = goalDis + epsilon;
 	//uses just right side since they should work move in sync
 	while(curDis < lowGoal or curDis > highGoal){
-		//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances
-		double errorDis = std::max(((curDis - goalDis)/(desiredDis)),.25)*((curDis - goalDis)/abs(curDis - goalDis));
-		this->PIDDrive(-errorDis, errorDis);
+		double difference = ((curDis - goalDis)/abs(curDis - goalDis))*std::max(std::abs((curDis-goalDis)/desiredDis), .25);
+		this->PIDDrive(difference, difference);
 		curDis = this->rDriveEncoder->GetDistance();
 	}
 	//once at desiredDis, stop robot
@@ -254,10 +253,10 @@ void VPBSDrive::Turn(double desiredTurn, double epsilon){
 	double highGoal = goal + epsilon;
 	while(cur < lowGoal or cur > highGoal) {
 		//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances.
-		double errorTurn = std::max(std::abs((cur - goal)/(desiredTurn)),.5)*((cur - goal)/abs(cur - goal));
-		std::cout<<this->gyro->GetAngle()<<std::endl;
-		this->PIDDrive(-errorTurn, errorTurn); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
-		//this->Drive(0,errorTurn); //try this if that ^ doesn't work. This won't turn in place though
+		double difference = ((cur - goal)/std::abs(cur-goal))*std::max(std::abs((cur - goal)/desiredTurn), .5);
+		std::cout<<"cur "<<this->gyro->GetAngle()<< " turning to "<< desiredTurn<< " epsilon "<< epsilon<< " difference "<< difference<<std::endl;
+		this->PIDDrive(-difference, difference); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
+		//this->Drive(.5 ,errorTurn); //try this if that ^ doesn't work. This won't turn in place though
 		cur = this->gyro->GetAngle();
 	}
 	//once to desired angle stop motors
@@ -315,4 +314,3 @@ void VPBSDrive::StopMotor(){
 		this->lSide[i]->StopMotor();
 	}
 }
-

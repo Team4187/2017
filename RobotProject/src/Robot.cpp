@@ -14,7 +14,7 @@
 #include <cscore_oo.h>
 #include <Servo.h>
 
-
+#include <EncoderMotor.h>
 #include <DriveTrain.h>
 /* Welcome! This is Team 4187's 2017 FIRST Robotics Competition code. Go Roborams!
  * All of our code is in one file right now. Lol, what the hell.
@@ -31,13 +31,14 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(7, 3);
 	//frc::Spark* clawServo = new frc::Spark(11);
 	frc::Servo* clawServo = new frc::Servo(10);
-	frc::Servo* ballGate = new frc::Servo(11);
+	//frc::Servo* ballGate = new frc::Servo(11);
+	EncoderMotor* ballGate = new EncoderMotor(11, 4, 5);
 	frc::Spark* winch0 = new frc::Spark(6);
 	frc::Spark* winch1 = new frc::Spark(7);
-	frc::Spark* intake = new frc::Spark(8);
+	//frc::Spark* intake = new frc::Spark(8);
 	frc::Spark* conveyor = new frc::Spark(9);
 	double rightTriggerValue = 0;
-	bool intakeRunning = false;
+	//bool intakeRunning = false;
 	bool conveyorRunning = false;
 	bool compressorRunning = true;
 	bool compressorButtons = false;
@@ -48,7 +49,7 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawIn = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawOut = frc::DoubleSolenoid::Value::kForward;
-	double ballGateUp = .9;
+	double ballGateUp = 90; //in ticks of encoder
 	double ballGateDown = 0;
 	double clawOpen = 1;
 	double clawShut = 0;
@@ -111,7 +112,7 @@ public:
 		winch0->Set(0);
 		winch1->Set(0);
 		clawServo->Set(clawOpen);
-		ballGate->Set(ballGateUp);
+		ballGate->SetValue(ballGateUp);
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
@@ -130,10 +131,11 @@ public:
 	 */
 	void Autonomous() {
 		myRobot->SetSafetyEnabled(false);
-		myRobot->DriveDis(80,2);
+		myRobot->DriveDis(80, 2);
 		std::cout<<"done driving"<<std::endl;
-		frc::Wait(3);
-		this->OperatorControl();
+		myRobot->Turn(90, 10);
+		std::cout<<"done turning"<<std::endl;
+		if(IsOperatorControl()){this->OperatorControl();}
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
@@ -160,7 +162,7 @@ public:
 			leftTriggerDown = (controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kLeftHand));
 			//power management
 			if(myRobot->GetCurVoltage() < myRobot->GetMinVoltage()){
-				intake->Set(0);
+				//intake->Set(0);
 				conveyor->Set(0);
 				compressor->Stop();
 			}
@@ -219,7 +221,7 @@ public:
 						conveyor->Set(-1.0);
 						ballGate->Set(ballGateDown); //flat
 				}
-				intake->Set(0); //turn off intake if
+				//intake->Set(0); //turn off intake if
 			}
 			rightBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kRightHand);
 			//compressor toggle
@@ -232,7 +234,7 @@ public:
 						compressorRunning = true;
 						compressor->Start();
 				}
-				intake->Set(0); //turn off intake if
+				//intake->Set(0); //turn off intake if
 			}
 
 			compressorButtons = (controller->GetStartButton() or controller->GetBackButton());
@@ -242,11 +244,16 @@ public:
 		}
 	}
 	void Test() override {
-		while(IsEnabled()){
-			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
-			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-			myRobot->Turn(45,15);
-			std::cout<<myRobot->gyro->GetAngle()<<std::endl;
+		while(IsEnabled() && IsTest()){
+			ballGate->SetValue(-90);
+			std::cout<<"motor: "<<ballGate->GetRawSet()<<" set value: "<<ballGate->GetSetValue()<<" value: "<<ballGate->GetRealValue()<<std::endl;
+			frc::Wait(2);
+			ballGate->SetValue(0.0);
+			std::cout<<"motor: "<<ballGate->GetRawSet()<<" set value: "<<ballGate->GetSetValue()<<" value: "<<ballGate->GetRealValue()<<std::endl;
+			frc::Wait(2);
+			ballGate->SetValue(90.0);
+			std::cout<<"motor: "<<ballGate->GetRawSet()<<" set value: "<<ballGate->GetSetValue()<<" value: "<<ballGate->GetRealValue()<<std::endl;
+			frc::Wait(2);
 			frc::Wait(.005);
 		}
 	}

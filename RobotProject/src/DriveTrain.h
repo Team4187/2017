@@ -45,21 +45,17 @@ private:
 	double iK = 0;
 	double dK = 0;
 
-
-
 	//Pneumatic related objects and stuff
 
 	frc::DoubleSolenoid* gearShifter;
 	frc::DoubleSolenoid::Value highGear = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value lowGear = frc::DoubleSolenoid::Value::kForward;
 
-
 	//Encoder related stuff
 
 	//double dPerPulse = (4 /*<- Wheel Diameter*/ * 3.1415 * (1/3) /*<- Ratio*/)/48 /*<- Pulse Per Revolution*/;
 	double dPerPulse = (4 * 3.1415)/(144);
 	double minRate = 1; //inches per second? to be considered moving
-
 
 	//Power Stuff
 
@@ -75,12 +71,9 @@ public:
 
 	VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB);
 
-
 	virtual ~VPBSDrive() = default;
 
-
 	void DownShift();
-
 
 	void UpShift();
 
@@ -90,16 +83,13 @@ public:
 	//Tank Driving! Now with PID control and Shifting all automagically inside!
 	void TankDrive (frc::XboxController* controller);
 
-
 	//Autonomous driving
-	void Drive (double mag, double curve);
-
+	void Drive(double mag, double curve);
 	void DriveDis(double desiredDis, double epsilon);
 	void Turn(double desiredTurn, double epsilon);
 
 	//Basically switch gears lol
 	void ToggleGearShifter();
-
 
 	//Stuff we have to implement to make program happy
 	double GetCurVoltage();
