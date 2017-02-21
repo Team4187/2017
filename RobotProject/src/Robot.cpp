@@ -48,7 +48,7 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawIn = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawOut = frc::DoubleSolenoid::Value::kForward;
-	double ballGateUp = 1;
+	double ballGateUp = .9;
 	double ballGateDown = 0;
 	double clawOpen = 1;
 	double clawShut = 0;
@@ -106,7 +106,7 @@ public:
 		std::thread cameraThread(CameraThread);
 		cameraThread.detach();
 		myRobot->DownShift();
-		intake->Set(0);
+		//intake->Set(0);
 		conveyor->Set(0);
 		winch0->Set(0);
 		winch1->Set(0);
@@ -130,17 +130,10 @@ public:
 	 */
 	void Autonomous() {
 		myRobot->SetSafetyEnabled(false);
-		myRobot->DriveDis(10,2);
+		myRobot->DriveDis(80,2);
+		std::cout<<"done driving"<<std::endl;
 		frc::Wait(3);
-		myRobot->DriveDis(-10,2);
-		frc::Wait(3);
-		myRobot->DriveDis(24,2);
-		frc::Wait(3);
-		myRobot->DriveDis(-24,2);
-		frc::Wait(3);
-		myRobot->Turn(45,10);
-		frc::Wait(3);
-		myRobot->Turn(-45,10);
+		this->OperatorControl();
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
@@ -201,7 +194,7 @@ public:
 			}
 
 			//intake
-			if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
+			/**if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
 				if (intakeRunning) {
 						intake->Set(0);
 						intakeRunning = false;
@@ -212,8 +205,8 @@ public:
 						intakeRunning = true;
 						conveyor->Set(-1.0);
 				}
-			}
-			leftBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand);
+			}**/
+			//leftBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand);
 			//conveyor "low goal scoring"
 			if (!rightBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kRightHand)) {
 				if (conveyorRunning) {
@@ -252,8 +245,8 @@ public:
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-			clawServo->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
-			std::cout<<myRobot->gyro->GetRate()<<std::endl;
+			myRobot->Turn(45,15);
+			std::cout<<myRobot->gyro->GetAngle()<<std::endl;
 			frc::Wait(.005);
 		}
 	}
