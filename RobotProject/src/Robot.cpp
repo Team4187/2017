@@ -30,8 +30,8 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid* gearDoor = new frc::DoubleSolenoid(2,6); //2 and 6 on the PCM
 	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(7, 3);
 	//frc::Spark* clawServo = new frc::Spark(11);
-	frc::Servo* clawServo = new frc::Servo(11);
-	frc::Servo* ballGate = new frc::Servo(10);
+	frc::Servo* clawServo = new frc::Servo(10);
+	frc::Servo* ballGate = new frc::Servo(11);
 	frc::Spark* winch0 = new frc::Spark(6);
 	frc::Spark* winch1 = new frc::Spark(7);
 	frc::Spark* intake = new frc::Spark(8);
@@ -48,9 +48,9 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawIn = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawOut = frc::DoubleSolenoid::Value::kForward;
-	double ballGateUp = 100;
+	double ballGateUp = 1;
 	double ballGateDown = 0;
-	double clawOpen = 30;
+	double clawOpen = 1;
 	double clawShut = 0;
 private:
 
@@ -110,8 +110,8 @@ public:
 		conveyor->Set(0);
 		winch0->Set(0);
 		winch1->Set(0);
-		//clawServo->SetAngle(clawShut);
-		//ballGate->Set(ballGateUp);
+		clawServo->Set(clawOpen);
+		ballGate->Set(ballGateUp);
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
@@ -193,12 +193,13 @@ public:
 
 			//opens and closes claw
 			if(controller->GetPOV() == 90){
-					//clawServo->SetAngle(clawOpen);
+					clawServo->Set(clawOpen);
+
+			}
+			if(controller->GetPOV() == 270){
+					clawServo->Set(clawShut);
 			}
 
-			if(controller->GetPOV() == 270){
-					//clawServo->SetAngle(clawShut);
-			}
 			//intake
 			if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
 				if (intakeRunning) {
@@ -240,6 +241,7 @@ public:
 				}
 				intake->Set(0); //turn off intake if
 			}
+
 			compressorButtons = (controller->GetStartButton() or controller->GetBackButton());
 			//frc::SmartDashboard::PutBoolean("Compressor Running", myCompressor.Enabled());
 			// wait for a motor update time
@@ -250,7 +252,8 @@ public:
 		while(IsEnabled()){
 			frc::SmartDashboard::PutNumber("rDis",myRobot->rDriveEncoder->GetDistance());
 			frc::SmartDashboard::PutNumber("lDis",myRobot->lDriveEncoder->GetDistance());
-			std::cout<<myRobot->gyro->GetAngle()<<std::endl;
+			clawServo->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
+			std::cout<<myRobot->gyro->GetRate()<<std::endl;
 			frc::Wait(.005);
 		}
 	}

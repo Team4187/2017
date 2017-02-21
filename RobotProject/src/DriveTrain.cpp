@@ -153,6 +153,8 @@ void VPBSDrive::PIDDrive(double rVal, double lVal){
 	frc::SmartDashboard::PutNumber("rCor", rCor);
 	frc::SmartDashboard::PutNumber("lCor", lCor);
 	frc::SmartDashboard::PutNumber("curMaxSpeed", this->curMaxSpeed);
+	frc::SmartDashboard::PutNumber("gyro", this->gyro->GetAngle());
+	frc::SmartDashboard::PutNumber("gyroRate", this->gyro->GetRate());
 }
 
 
@@ -184,17 +186,17 @@ void VPBSDrive::TankDrive (frc::XboxController* controller){
 	}
 
 
-	/**
+
 	//auto shifting based on speed
-	if(this->lDriveEncoder->GetRate() > lowMaxSpeed && this->rDriveEncoder->GetRate() > lowMaxSpeed){
-		//if both sides are moving at low max speed or higher then shift to high gear
-		this->UpShift();
-	}
-	if (this->lDriveEncoder->GetRate() < lowMaxSpeed && this->rDriveEncoder->GetRate() < lowMaxSpeed){
+	if (this->lDriveEncoder->GetRate() < 0.55*lowMaxSpeed && this->rDriveEncoder->GetRate() < 0.55*lowMaxSpeed){
 		//if both sides are moving slower than max speed then shift to low gear
 		this->DownShift();
 	}
-	**/
+	if(this->lDriveEncoder->GetRate() > 0.65*lowMaxSpeed && this->rDriveEncoder->GetRate() > 0.65*lowMaxSpeed){
+		//if both sides are moving at low max speed or higher then shift to high gear
+		this->UpShift();
+	}
+
 
 	this->PIDDrive(rVal, lVal);
 }

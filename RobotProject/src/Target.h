@@ -16,8 +16,8 @@ class Target {
 		std::shared_ptr<NetworkTable> table;
 	public:
 		Target(std::string tableName);
-		double GetCenterX(int whichOne);
-		double GetCenterY(int whichOne);
+		double GetCenterX();
+		//double GetCenterY(int whichOne);
 };
 
 #endif /* SRC_TARGET_H_ */
