@@ -23,6 +23,7 @@ private:
 	double tolerance;
 	double holdPower;
 	double motorValue;
+	double maxSet;
 
 public:
 	EncoderMotor(int pwmPort, int encoderPortA, int encoderPortB); //do these variables work better?
@@ -31,7 +32,7 @@ public:
 	void Reset(bool motorToZero = false); //resets encoder and possibly sets to new Zero position
 	void SetTolerance(double newTolerance);
 	void SetHoldPower(double newHoldPower);
-	void SetValue(double newEncoderValue); //sets and holds at encoder position
+	void SetValue(double newEncoderValue, double epsilon); //sets and holds at encoder position
 	double GetSetValue(); //returns value the motor is set to hold
 	double GetRealValue();
 	void SetRate(double newEncoderRate); //set a speed at which to turn

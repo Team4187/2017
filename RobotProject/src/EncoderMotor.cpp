@@ -14,13 +14,14 @@
 
 EncoderMotor::EncoderMotor(int pwmPort, int encoderPortA, int encoderPortB) {
 	this->motor = new frc::Spark(pwmPort);
-	this->encoder = new frc::Encoder(encoderPortA, encoderPortB, false, frc::Encoder::EncodingType::k2X);
+	this->encoder = new frc::Encoder(encoderPortA, encoderPortB, true, frc::Encoder::EncodingType::k1X);
 	this->encoder->Reset();
 	this->encoderValue = this->encoder->GetDistance();
 	this->encoderRate = this->encoder->GetRate();
 	this->motorValue = 0;
-	this->tolerance = .1;
-	this->holdPower = .1;
+	this->tolerance = 0.1;
+	this->holdPower = 0;
+	this->maxSet = 0.2;
 };
 void EncoderMotor::Reset(bool motorToZero){
 	this->encoder->Reset();
@@ -30,13 +31,15 @@ void EncoderMotor::Reset(bool motorToZero){
 }
 void EncoderMotor::SetTolerance(double newTolerance){this->tolerance=newTolerance;}
 void EncoderMotor::SetHoldPower(double newHoldPower){this->holdPower=newHoldPower;}
-void EncoderMotor::SetValue(double newEncoderValue){
+void EncoderMotor::SetValue(double newEncoderValue, double epsilon){
 	this->encoderValue = newEncoderValue;
-	if((this->GetRealValue() < this->GetSetValue()*(1 - this->tolerance)) or (this->GetRealValue() > this->GetSetValue()*(1 + this->tolerance)) ){
-		this->Set((this->GetRealValue()-this->GetSetValue())/this->GetSetValue());
-	}
-	else{
-		this->Set(this->holdPower);
+
+	double difference = this->GetRealValue() - newEncoderValue;
+
+	if((this->GetRealValue() < newEncoderValue - epsilon) or (this->GetRealValue() > newEncoderValue + epsilon)){
+
+		this->Set(difference);
+
 	}
 }
 double EncoderMotor::GetSetValue(){return this->encoderValue;}
@@ -47,13 +50,14 @@ void EncoderMotor::SetRate(double newEncoderRate){
 			this->Set(((this->GetRealRate()-this->GetSetRate())/this->GetSetRate()) + this->GetRawSet());
 	}
 	else{
-		this->Set(this->holdPower + this->GetRawSet());
+		this->Set(this->holdPower);
 	}
 }
 double EncoderMotor::GetSetRate(){return this->encoderRate;}
 double EncoderMotor::GetRealRate(){return this->encoder->GetRate();}
 void EncoderMotor::Set(double value){
-	this->motorValue = (value/std::abs(value))*std::min(std::abs(value),1.0);
+	//this->motorValue = (value/std::abs(value))*std::min(std::abs(value),this->maxSet);
+	this->motorValue = (value/std::abs(value))*.15;
 	this->motor->Set(this->GetRawSet());
 }
 double EncoderMotor::GetRawSet(){return this->motorValue;}

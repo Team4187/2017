@@ -14,6 +14,7 @@
 #include <cscore_oo.h>
 #include <Servo.h>
 
+#include <Target.h>
 #include <EncoderMotor.h>
 #include <DriveTrain.h>
 /* Welcome! This is Team 4187's 2017 FIRST Robotics Competition code. Go Roborams!
@@ -31,16 +32,18 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(7, 3);
 	//frc::Spark* clawServo = new frc::Spark(11);
 	frc::Servo* clawServo = new frc::Servo(10);
+	//frc::Servo* ballGate = new frc::Servo(8);
 	//frc::Servo* ballGate = new frc::Servo(11);
-	EncoderMotor* ballGate = new EncoderMotor(11, 4, 5);
+	EncoderMotor* ballGate = new EncoderMotor(8, 4, 5);
 	frc::Spark* winch0 = new frc::Spark(6);
 	frc::Spark* winch1 = new frc::Spark(7);
-	//frc::Spark* intake = new frc::Spark(8);
+	//frc::Spark* intake = new frc::Spark();
 	frc::Spark* conveyor = new frc::Spark(9);
+	Target* myTarget = new Target("table");
 	double rightTriggerValue = 0;
 	//bool intakeRunning = false;
 	bool conveyorRunning = false;
-	bool compressorRunning = true;
+	bool compressorRunning = false;
 	bool compressorButtons = false;
 	bool leftBumperButton = false;
 	bool rightBumperButton = false;
@@ -49,8 +52,9 @@ class Robot: public frc::SampleRobot {
 	frc::DoubleSolenoid::Value gearClose = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawIn = frc::DoubleSolenoid::Value::kReverse;
 	frc::DoubleSolenoid::Value clawOut = frc::DoubleSolenoid::Value::kForward;
-	double ballGateUp = 90; //in ticks of encoder
-	double ballGateDown = 0;
+	double ballGateUp = 0; //in ticks of encoder
+	double ballGateDown = 80;
+	double ballGateState = ballGateUp;
 	double clawOpen = 1;
 	double clawShut = 0;
 private:
@@ -112,7 +116,7 @@ public:
 		winch0->Set(0);
 		winch1->Set(0);
 		clawServo->Set(clawOpen);
-		ballGate->SetValue(ballGateUp);
+		ballGate->SetValue(ballGateState, 10);
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
@@ -131,10 +135,11 @@ public:
 	 */
 	void Autonomous() {
 		myRobot->SetSafetyEnabled(false);
-		myRobot->DriveDis(80, 2);
+		myRobot->DriveDis(82, 2);
 		std::cout<<"done driving"<<std::endl;
-		myRobot->Turn(90, 10);
-		std::cout<<"done turning"<<std::endl;
+		myRobot->Turn(myTarget->GetAngle(), 10);
+		//myRobot->Turn(90, 10);
+		//std::cout<<"done turning"<<std::endl;
 		if(IsOperatorControl()){this->OperatorControl();}
 	}
 	void OperatorControl() override {
@@ -210,16 +215,17 @@ public:
 			}**/
 			//leftBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand);
 			//conveyor "low goal scoring"
+			ballGate->SetValue(ballGateState, 10); //straight up
 			if (!rightBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kRightHand)) {
 				if (conveyorRunning) {
 						conveyorRunning = false;
+						ballGateState = ballGateUp;
 						conveyor->Set(0);
-						ballGate->Set(ballGateUp); //straight up
 				}
 				else {
 						conveyorRunning = true;
 						conveyor->Set(-1.0);
-						ballGate->Set(ballGateDown); //flat
+						ballGateState = ballGateDown; //flat
 				}
 				//intake->Set(0); //turn off intake if
 			}
@@ -229,10 +235,12 @@ public:
 				if (compressorRunning) {
 						compressorRunning = false;
 						compressor->Stop();
+						std::cout << "Stop compressor" << std::endl;
 				}
 				else {
 						compressorRunning = true;
 						compressor->Start();
+						std::cout << "Start compressor" << std::endl;
 				}
 				//intake->Set(0); //turn off intake if
 			}
@@ -245,15 +253,12 @@ public:
 	}
 	void Test() override {
 		while(IsEnabled() && IsTest()){
-			ballGate->SetValue(-90);
-			std::cout<<"motor: "<<ballGate->GetRawSet()<<" set value: "<<ballGate->GetSetValue()<<" value: "<<ballGate->GetRealValue()<<std::endl;
-			frc::Wait(2);
-			ballGate->SetValue(0.0);
-			std::cout<<"motor: "<<ballGate->GetRawSet()<<" set value: "<<ballGate->GetSetValue()<<" value: "<<ballGate->GetRealValue()<<std::endl;
-			frc::Wait(2);
-			ballGate->SetValue(90.0);
-			std::cout<<"motor: "<<ballGate->GetRawSet()<<" set value: "<<ballGate->GetSetValue()<<" value: "<<ballGate->GetRealValue()<<std::endl;
-			frc::Wait(2);
+			//ballGate->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand), 10);
+			winch1->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
+			winch0->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
+			std::cout<<"x "<<myTarget->GetCenterX()<<" area "<<myTarget->GetArea()<<std::endl;
+			//ballGate->SetValue(80, 10);
+			std::cout<<ballGate->GetRealValue()<<std::endl;
 			frc::Wait(.005);
 		}
 	}

@@ -188,7 +188,7 @@ void VPBSDrive::TankDrive (frc::XboxController* controller){
 
 
 	//auto shifting based on speed
-	if (this->lDriveEncoder->GetRate() < 0.55*lowMaxSpeed && this->rDriveEncoder->GetRate() < 0.55*lowMaxSpeed){
+	if (this->lDriveEncoder->GetRate() < 0.45*lowMaxSpeed && this->rDriveEncoder->GetRate() < 0.45*lowMaxSpeed){
 		//if both sides are moving slower than max speed then shift to low gear
 		this->DownShift();
 	}
@@ -236,7 +236,7 @@ void VPBSDrive::DriveDis(double desiredDis, double epsilon){
 	double highGoal = goalDis + epsilon;
 	//uses just right side since they should work move in sync
 	while(curDis < lowGoal or curDis > highGoal){
-		double difference = ((curDis - goalDis)/abs(curDis - goalDis))*std::max(std::abs((curDis-goalDis)/desiredDis), .25);
+		double difference = ((curDis - goalDis)/abs(curDis - goalDis))*std::max(std::abs((curDis-goalDis)/desiredDis), .5);
 		this->PIDDrive(difference, difference);
 		curDis = this->rDriveEncoder->GetDistance();
 	}
@@ -253,7 +253,7 @@ void VPBSDrive::Turn(double desiredTurn, double epsilon){
 	double highGoal = goal + epsilon;
 	while(cur < lowGoal or cur > highGoal) {
 		//slows down as it gets closer, since this fraction will approach 0. Won't work well with small distances.
-		double difference = ((cur - goal)/std::abs(cur-goal))*std::max(std::abs((cur - goal)/desiredTurn), .5);
+		double difference = ((cur - goal)/std::abs(cur-goal))*std::max(std::abs((cur - goal)/desiredTurn), .75);
 		std::cout<<"cur "<<this->gyro->GetAngle()<< " turning to "<< desiredTurn<< " epsilon "<< epsilon<< " difference "<< difference<<std::endl;
 		this->PIDDrive(-difference, difference); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
 		//this->Drive(.5 ,errorTurn); //try this if that ^ doesn't work. This won't turn in place though

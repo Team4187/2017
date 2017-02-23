@@ -12,11 +12,16 @@
 #include <string>
 
 class Target {
-	private:
-		std::shared_ptr<NetworkTable> table;
 	public:
+		std::shared_ptr<NetworkTable> table;
+		double center;
+		double expectedArea;
+		double range;
+	//public:
 		Target(std::string tableName);
 		double GetCenterX();
+		double GetArea();
+		double GetAngle();
 		//double GetCenterY(int whichOne);
 };
 
