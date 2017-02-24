@@ -159,10 +159,22 @@ void VPBSDrive::PIDDrive(double rVal, double lVal){
 
 
 //Tank Driving! Now with PID control and Shifting all automagically inside!
-void VPBSDrive::TankDrive (frc::XboxController* controller){
+void VPBSDrive::TankDrive (frc::XboxController* controller, bool invert){
 
 	double rVal = controller->GetY(GenericHID::kRightHand);
 	double lVal = controller->GetY(GenericHID::kLeftHand);
+
+	//if invert is true, swap directions of joysticks.
+	if(invert){
+		rVal *= -1;
+		lVal *= -1;
+		/*//might need to be
+		 * double negR = -rVal;
+		 * double negL = -lVal;
+		 * rVal = negL;
+		 * lVal = negR;
+		 */
+	}
 
 	//Null Zone
 	if (std::abs(rVal) < .1 ) {

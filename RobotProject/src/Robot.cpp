@@ -57,6 +57,8 @@ class Robot: public frc::SampleRobot {
 	double ballGateState = ballGateUp;
 	double clawOpen = 1;
 	double clawShut = 0;
+	bool wasAPressed;
+	bool towardsWinch;
 private:
 
 	//This is a seperate thread that handles the camera screen on the Dashboard.
@@ -120,6 +122,8 @@ public:
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
+		wasAPressed = false;
+		towardsWinch = true;
 	}
 
 	/*
@@ -146,7 +150,7 @@ public:
 		myRobot->SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
 			//driving
-			myRobot->TankDrive(controller);
+			myRobot->TankDrive(controller, towardsWinch);
 			//manual shifting
 			/*if (controller->GetPOV() == 0){
 				myRobot->UpShift();
@@ -199,7 +203,12 @@ public:
 			if(controller->GetPOV() == 270){
 					clawServo->Set(clawShut);
 			}
-
+			//switch driving with camera
+			bool isADown = controller->GetAButton();
+			if (!wasAPressed and isADown) {
+				towardsWinch = !towardsWinch;
+			}
+			wasAPressed = isADown;
 			//intake
 			/**if (!leftBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand)) {
 				if (intakeRunning) {
