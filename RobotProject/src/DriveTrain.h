@@ -63,13 +63,16 @@ private:
 	double lowVolt;
 	frc::PowerDistributionPanel* pdp;
 	double minVolt = 9.0;
+
+	//Pretend Controller Interface because I'm a bad auto maker and I'd prefer us to not get stuck in a loop and not be able to teleop
+	frc::XboxController* controllerInterface;
 public:
 	//Public Encoder & Gyro stuffs
 	frc::Encoder* rDriveEncoder;
 	frc::Encoder* lDriveEncoder;
 	frc::ADXRS450_Gyro* gyro;
 
-	VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB);
+	VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB, frc::XboxController* ctrl);
 
 	virtual ~VPBSDrive() = default;
 

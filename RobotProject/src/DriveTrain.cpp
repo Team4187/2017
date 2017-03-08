@@ -21,7 +21,7 @@
 #include <XboxController.h>
 #include <ADXRS450_Gyro.h>
 
-VPBSDrive::VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB) { //TODO: Make these vars less shitty
+VPBSDrive::VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int reA, int reB, int leA, int leB, int solA, int solB, frc::XboxController* ctrl) { //TODO: Make these vars less shitty
 
 
 	//Initialize all the Sparks (in conveniently named arrays!)
@@ -62,6 +62,9 @@ VPBSDrive::VPBSDrive (int frm, int crm, int brm, int flm, int clm, int blm, int 
 	pdp = new PowerDistributionPanel();
 	curVolt = pdp->GetVoltage();
 	lowVolt = curVolt;
+
+	//yay to breaking some fundamentals of OOP!! :) (I'm naming it controller interface so it appears as if we are following the rules)
+	controllerInterface = ctrl;
 }
 
 
@@ -251,6 +254,11 @@ void VPBSDrive::DriveDis(double desiredDis, double epsilon){
 		double difference = ((curDis - goalDis)/abs(curDis - goalDis))*std::max(std::abs((curDis-goalDis)/desiredDis), .5);
 		this->PIDDrive(difference, difference);
 		curDis = this->rDriveEncoder->GetDistance();
+		//don't let the name fool you, it's just a controller pointer. BUT good practice says it should be a special interface but I didn't make one so this is a reminder of good practice :)
+		if(this->controllerInterface->GetXButton()){
+			std::cout<<"we canceled via handy dandy X button"<<std::endl;
+			break;
+		}
 	}
 	//once at desiredDis, stop robot
 	this->Drive(0,0);
@@ -270,6 +278,11 @@ void VPBSDrive::Turn(double desiredTurn, double epsilon){
 		this->PIDDrive(-difference, difference); //turn right motors backwards and left forwards to turn clockwise, maybe math it if too violent or too weak
 		//this->Drive(.5 ,errorTurn); //try this if that ^ doesn't work. This won't turn in place though
 		cur = this->gyro->GetAngle();
+		//don't let the name fool you, it's just a controller pointer. BUT good practice says it should be a special interface but I didn't make one so this is a reminder of good practice :)
+		if(this->controllerInterface->GetXButton()){
+			std::cout<<"we canceled via handy dandy X button"<<std::endl;
+			break;
+		}
 	}
 	//once to desired angle stop motors
 	this->Drive(0,0);

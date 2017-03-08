@@ -25,8 +25,9 @@
 
 
 class Robot: public frc::SampleRobot {
-	VPBSDrive* myRobot = new VPBSDrive(3,4,5,0,1,2,2,3,0,1,4,5); // robot drive system
 	frc::XboxController* controller = new frc::XboxController(0);
+	//Blame it on Connor but controller needs to be defined before drive base even though it's uglier
+	VPBSDrive* myRobot = new VPBSDrive(3,4,5,0,1,2,2,3,0,1,4,5, controller); // robot drive system
 	frc::Compressor* compressor = new frc::Compressor();
 	frc::DoubleSolenoid* gearDoor = new frc::DoubleSolenoid(2,6); //2 and 6 on the PCM
 	frc::DoubleSolenoid* clawSol = new frc::DoubleSolenoid(7, 3);
