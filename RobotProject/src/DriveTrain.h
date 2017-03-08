@@ -84,7 +84,7 @@ public:
 	void PIDDrive(double rVal, double lVal);
 
 	//Tank Driving! Now with PID control and Shifting all automagically inside!
-	void TankDrive (frc::XboxController* controller, bool invert = false);
+	void TankDrive (frc::XboxController* controller, bool invert = false, bool manual = false);
 
 	//Autonomous driving
 	void Drive(double mag, double curve);

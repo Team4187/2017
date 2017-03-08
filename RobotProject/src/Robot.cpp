@@ -58,8 +58,10 @@ class Robot: public frc::SampleRobot {
 	double ballGateState = ballGateUp;
 	double clawOpen = 1;
 	double clawShut = 0;
-	bool wasAPressed;
+	bool wasAPressed = false;
+	bool wasBPressed = false;
 	bool towardsWinch = false;
+	bool inManual = false;
 private:
 
 	//This is a seperate thread that handles the camera screen on the Dashboard.
@@ -123,7 +125,6 @@ public:
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
-		wasAPressed = false;
 	}
 
 	/*
@@ -142,6 +143,7 @@ public:
 		//center gear
 		myRobot->DriveDis(82, 2);
 		std::cout<<"done driving"<<std::endl;
+
 		//left gear
 		//myRobot->DriveDis(94, 2);
 		//myRobot->Turn(135, 10);
@@ -154,13 +156,27 @@ public:
 		//std::cout<<"done turning"<<std::endl;
 		//myRobot->DriveDis(24, 2);
 		//std::cout<<"done driving"<<std::endl;
+
 		if(IsOperatorControl()){this->OperatorControl();}
 	}
 	void OperatorControl() override {
 		myRobot->SetSafetyEnabled(true);
 		while (IsOperatorControl() && IsEnabled()) {
+
+			//manual driving stuff
+			//in the event encoders break or malfunction, we can drive w/o them
+			bool isBDown = controller->GetBButton();
+			if (!wasBPressed and isBDown) {
+				inManual = !inManual;
+			}
+			wasBPressed = isBDown;
+			//if encoders break we should probably be safe and stay in low gear so gear boxes aren't torn apart by taking off in high
+			if(inManual){
+				myRobot->DownShift();
+			}
+
 			//driving
-			myRobot->TankDrive(controller, towardsWinch);
+			myRobot->TankDrive(controller, towardsWinch, inManual);
 			//manual shifting
 			/*if (controller->GetPOV() == 0){
 				myRobot->UpShift();
@@ -234,7 +250,8 @@ public:
 			}**/
 			//leftBumperButton = controller->GetBumper(frc::GenericHID::JoystickHand::kLeftHand);
 			//conveyor "low goal scoring"
-			ballGate->SetValue(ballGateState, 10); //straight up
+			ballGate->SetValue(ballGateState, 10); //set to current "state"
+			std::cout<<"ballGateState: "<<ballGateState<<std::endl;
 			if (!rightBumperButton && controller->GetBumper(frc::GenericHID::JoystickHand::kRightHand)) {
 				if (conveyorRunning) {
 						conveyorRunning = false;
@@ -273,8 +290,8 @@ public:
 	void Test() override {
 		while(IsEnabled() && IsTest()){
 			//ballGate->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand), 10);
-			winch1->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
-			winch0->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
+			winch1->Set(controller->GetX(frc::GenericHID::JoystickHand::kLeftHand));
+			winch0->Set(controller->GetX(frc::GenericHID::JoystickHand::kLeftHand));
 			//std::cout<<"x "<<myTarget->GetCenterX()<<" area "<<myTarget->GetArea()<<std::endl;
 			//ballGate->SetValue(80, 10);
 			myRobot->PureTankDrive(controller->GetY(frc::GenericHID::JoystickHand::kRightHand),controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));

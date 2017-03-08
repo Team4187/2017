@@ -162,11 +162,10 @@ void VPBSDrive::PIDDrive(double rVal, double lVal){
 
 
 //Tank Driving! Now with PID control and Shifting all automagically inside!
-void VPBSDrive::TankDrive (frc::XboxController* controller, bool invert){
+void VPBSDrive::TankDrive (frc::XboxController* controller, bool invert, bool manual){
 
 	double rVal = controller->GetY(GenericHID::kRightHand);
 	double lVal = controller->GetY(GenericHID::kLeftHand);
-
 	//if invert is true, swap directions of joysticks.
 	if(invert){
 		//rVal *= -1;
@@ -178,42 +177,45 @@ void VPBSDrive::TankDrive (frc::XboxController* controller, bool invert){
 		 lVal = negR;
 
 	}
+	//if manual, use PureTankDrive and skip the PID control loop
+	if(manual){this->PureTankDrive(rVal,lVal);}
+		else{
+		//Null Zone
+		if (std::abs(rVal) < .1 ) {
+			rVal = 0.0;
+		}
+		if (std::abs(lVal) < .1 ) {
+			lVal = 0.0;
+		}
 
-	//Null Zone
-	if (std::abs(rVal) < .1 ) {
-		rVal = 0.0;
+		//Update the voltage variables
+		this->curVolt = this->pdp->GetVoltage();
+		if(this->curVolt < this->lowVolt){
+			this->lowVolt = this->curVolt;
+		}
+		frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
+
+		//"Brownout" to avoid the actual browning out lol
+		if(this->curVolt < this->minVolt){
+			rVal *= .5;
+			lVal *= .5;
+		}
+
+
+
+		//auto shifting based on speed
+		if (this->lDriveEncoder->GetRate() < 0.45*lowMaxSpeed && this->rDriveEncoder->GetRate() < 0.45*lowMaxSpeed){
+			//if both sides are moving slower than max speed then shift to low gear
+			this->DownShift();
+		}
+		if(this->lDriveEncoder->GetRate() > 0.65*lowMaxSpeed && this->rDriveEncoder->GetRate() > 0.65*lowMaxSpeed){
+			//if both sides are moving at low max speed or higher then shift to high gear
+			this->UpShift();
+		}
+
+
+		this->PIDDrive(rVal, lVal);
 	}
-	if (std::abs(lVal) < .1 ) {
-		lVal = 0.0;
-	}
-
-	//Update the voltage variables
-	this->curVolt = this->pdp->GetVoltage();
-	if(this->curVolt < this->lowVolt){
-		this->lowVolt = this->curVolt;
-	}
-	frc::SmartDashboard::PutNumber("lowest Voltage", this->lowVolt);
-
-	//"Brownout" to avoid the actual browning out lol
-	if(this->curVolt < this->minVolt){
-		rVal *= .5;
-		lVal *= .5;
-	}
-
-
-
-	//auto shifting based on speed
-	if (this->lDriveEncoder->GetRate() < 0.45*lowMaxSpeed && this->rDriveEncoder->GetRate() < 0.45*lowMaxSpeed){
-		//if both sides are moving slower than max speed then shift to low gear
-		this->DownShift();
-	}
-	if(this->lDriveEncoder->GetRate() > 0.65*lowMaxSpeed && this->rDriveEncoder->GetRate() > 0.65*lowMaxSpeed){
-		//if both sides are moving at low max speed or higher then shift to high gear
-		this->UpShift();
-	}
-
-
-	this->PIDDrive(rVal, lVal);
 }
 
 
