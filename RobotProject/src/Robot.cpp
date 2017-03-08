@@ -58,7 +58,7 @@ class Robot: public frc::SampleRobot {
 	double clawOpen = 1;
 	double clawShut = 0;
 	bool wasAPressed;
-	bool towardsWinch;
+	bool towardsWinch = false;
 private:
 
 	//This is a seperate thread that handles the camera screen on the Dashboard.
@@ -123,7 +123,6 @@ public:
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
 		wasAPressed = false;
-		towardsWinch = true;
 	}
 
 	/*
@@ -139,11 +138,21 @@ public:
 	 */
 	void Autonomous() {
 		myRobot->SetSafetyEnabled(false);
+		//center gear
 		myRobot->DriveDis(82, 2);
 		std::cout<<"done driving"<<std::endl;
-		myRobot->Turn(myTarget->GetAngle(), 10);
-		//myRobot->Turn(90, 10);
+		//left gear
+		//myRobot->DriveDis(94, 2);
+		//myRobot->Turn(135, 10);
 		//std::cout<<"done turning"<<std::endl;
+		//myRobot->DriveDis(24, 2);
+		//std::cout<<"done driving"<<std::endl;
+		//right gear
+		//myRobot->DriveDis(94, 2);
+		//myRobot->Turn(-135, 10);
+		//std::cout<<"done turning"<<std::endl;
+		//myRobot->DriveDis(24, 2);
+		//std::cout<<"done driving"<<std::endl;
 		if(IsOperatorControl()){this->OperatorControl();}
 	}
 	void OperatorControl() override {
@@ -265,8 +274,9 @@ public:
 			//ballGate->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand), 10);
 			winch1->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
 			winch0->Set(controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
-			std::cout<<"x "<<myTarget->GetCenterX()<<" area "<<myTarget->GetArea()<<std::endl;
+			//std::cout<<"x "<<myTarget->GetCenterX()<<" area "<<myTarget->GetArea()<<std::endl;
 			//ballGate->SetValue(80, 10);
+			myRobot->PureTankDrive(controller->GetY(frc::GenericHID::JoystickHand::kRightHand),controller->GetY(frc::GenericHID::JoystickHand::kLeftHand));
 			std::cout<<ballGate->GetRealValue()<<std::endl;
 			frc::Wait(.005);
 		}

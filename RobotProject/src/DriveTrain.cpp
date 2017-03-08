@@ -166,14 +166,14 @@ void VPBSDrive::TankDrive (frc::XboxController* controller, bool invert){
 
 	//if invert is true, swap directions of joysticks.
 	if(invert){
-		rVal *= -1;
-		lVal *= -1;
-		/*//might need to be
-		 * double negR = -rVal;
-		 * double negL = -lVal;
-		 * rVal = negL;
-		 * lVal = negR;
-		 */
+		//rVal *= -1;
+		//lVal *= -1;
+		//might need to be
+		 double negR = -rVal;
+		 double negL = -lVal;
+		 rVal = negL;
+		 lVal = negR;
+
 	}
 
 	//Null Zone
