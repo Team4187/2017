@@ -42,6 +42,7 @@ class Robot: public frc::SampleRobot {
 	frc::Spark* conveyor = new frc::Spark(9);
 	Target* myTarget = new Target("table");
 	double rightTriggerValue = 0;
+	double leftTriggerValue = 0;
 	//bool intakeRunning = false;
 	bool conveyorRunning = false;
 	bool compressorRunning = false;
@@ -125,6 +126,26 @@ public:
 		compressor->Stop();
 		clawSol->Set(clawIn);
 		gearDoor->Set(gearClose);
+
+		rightTriggerValue = 0;
+		leftTriggerValue = 0;
+			//bool intakeRunning = false;
+		conveyorRunning = false;
+		compressorRunning = false;
+		compressorButtons = false;
+		leftBumperButton = false;
+		rightBumperButton = false;
+		leftTriggerDown = false;
+
+		ballGateUp = 0; //in ticks of encoder
+		ballGateDown = 80;
+		ballGateState = ballGateUp;
+		clawOpen = 1;
+		clawShut = 0;
+		wasAPressed = false;
+		wasBPressed = false;
+		towardsWinch = false;
+		inManual = false;
 	}
 
 	/*
@@ -210,8 +231,17 @@ public:
 			}
 			//winch
 			rightTriggerValue = controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kRightHand);
-			winch0->Set(rightTriggerValue);
-			winch1->Set(rightTriggerValue);
+			leftTriggerValue = controller->GetTriggerAxis(frc::GenericHID::JoystickHand::kLeftHand);
+			if(rightTriggerValue > .1){
+				winch0->Set(rightTriggerValue);
+				winch1->Set(rightTriggerValue);
+			} else if(leftTriggerValue > .1){
+				winch0->Set(leftTriggerValue*.25);
+				winch1->Set(leftTriggerValue*.25);
+			} else {
+				winch0->Set(0);
+				winch1->Set(0);
+			}
 			//claw
 			//moves claw in and out
 			if(controller->GetPOV() == 0){
