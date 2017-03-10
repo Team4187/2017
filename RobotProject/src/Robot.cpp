@@ -162,7 +162,7 @@ public:
 	void Autonomous() {
 		myRobot->SetSafetyEnabled(false);
 		//center gear
-		myRobot->DriveDis(82, 2);
+		myRobot->DriveDis(82, 82, 2);
 		std::cout<<"done driving"<<std::endl;
 
 		//left gear
