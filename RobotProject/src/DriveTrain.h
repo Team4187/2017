@@ -88,7 +88,7 @@ public:
 
 	//Autonomous driving
 	void Drive(double mag, double curve);
-	void DriveDis(double desiredDis, double epsilon);
+	void DriveDis(double desiredRDis, double desiredLDis, double epsilon);
 	void Turn(double desiredTurn, double epsilon);
 
 	//Basically switch gears lol

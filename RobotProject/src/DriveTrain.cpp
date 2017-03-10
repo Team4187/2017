@@ -245,17 +245,27 @@ void VPBSDrive::Drive (double mag, double curve){
 
 
 //drive so many units +- epsilon forward (at the moment inches due to dPerPulse settings), negative should be backwards
-void VPBSDrive::DriveDis(double desiredDis, double epsilon){
+void VPBSDrive::DriveDis(double desiredRDis, double desiredLDis, double epsilon){
 	double rStart = this->rDriveEncoder->GetDistance();
-	double curDis = rStart;
-	double goalDis = desiredDis + curDis;
-	double lowGoal = goalDis - epsilon;
-	double highGoal = goalDis + epsilon;
-	//uses just right side since they should work move in sync
-	while(curDis < lowGoal or curDis > highGoal){
-		double difference = ((curDis - goalDis)/abs(curDis - goalDis))*std::max(std::abs((curDis-goalDis)/desiredDis), .5);
-		this->PIDDrive(difference, difference);
-		curDis = this->rDriveEncoder->GetDistance();
+	double curRDis = rStart;
+	double goalRDis = desiredRDis + curRDis;
+	double lowRGoal = goalRDis - epsilon;
+	double highRGoal = goalRDis + epsilon;
+
+	double lStart = this->lDriveEncoder->GetDistance();
+	double curLDis = lStart;
+	double goalLDis = desiredLDis + curLDis;
+	double lowLGoal = goalLDis - epsilon;
+	double highLGoal = goalLDis + epsilon;
+
+	//uses just right side since they should work move in sync //LIES
+
+	while( (curRDis < lowRGoal or curRDis > highRGoal) or (curLDis < lowLGoal or curLDis > highLGoal) ){
+		double rDifference = ((curRDis - goalRDis)/abs(curRDis - goalRDis))*std::max(std::abs((curRDis-goalRDis)/desiredRDis), .5);
+		double lDifference = ((curLDis - goalLDis)/abs(curLDis - goalLDis))*std::max(std::abs((curLDis-goalLDis)/desiredLDis), .5);
+		this->PIDDrive(rDifference, lDifference);
+		curRDis = this->rDriveEncoder->GetDistance();
+		curLDis = this->lDriveEncoder->GetDistance();
 		//don't let the name fool you, it's just a controller pointer. BUT good practice says it should be a special interface but I didn't make one so this is a reminder of good practice :)
 		if(this->controllerInterface->GetXButton()){
 			std::cout<<"we canceled via handy dandy X button"<<std::endl;
